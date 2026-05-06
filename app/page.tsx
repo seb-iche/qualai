@@ -74,9 +74,9 @@ export default function Home() {
         .logo {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 2px;
           font-family: 'DM Serif Display', serif;
-          font-size: 22px;
+          font-size: 35px;
           color: var(--text);
           letter-spacing: -0.02em;
         }
@@ -202,6 +202,24 @@ export default function Home() {
 
         .waitlist button:hover { background: #8ec98b; }
 
+        .waitlist-btn {
+        display: inline-block;
+        background: var(--green);
+        color: #0e0f0d;
+        font-family: 'DM Mono', monospace;
+        font-size: 13px;
+        font-weight: 400;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        padding: 14px 32px;
+        border-radius: 8px;
+        text-decoration: none;
+        transition: background 0.2s;
+        animation: fadeUp 0.8s 0.3s ease both;
+        }
+
+      .waitlist-btn:hover { background: #8ec98b; }
+
         .features {
           display: flex;
           gap: 32px;
@@ -274,15 +292,7 @@ export default function Home() {
 
         <nav>
           <div className="logo">
-            <svg className="koala-mark" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="16" cy="16" r="15" stroke="#7db87a" strokeWidth="1"/>
-              <ellipse cx="7" cy="11" rx="4" ry="4.5" fill="#161710" stroke="#7db87a" strokeWidth="1"/>
-              <ellipse cx="25" cy="11" rx="4" ry="4.5" fill="#161710" stroke="#7db87a" strokeWidth="1"/>
-              <ellipse cx="16" cy="17" rx="7" ry="6" fill="#1e2018" stroke="#7db87a" strokeWidth="0.75"/>
-              <ellipse cx="16" cy="20" rx="4" ry="2.5" fill="#7db87a" opacity="0.3"/>
-              <circle cx="13" cy="15" r="1.5" fill="#7db87a" opacity="0.8"/>
-              <circle cx="19" cy="15" r="1.5" fill="#7db87a" opacity="0.8"/>
-            </svg>
+            <img src="/koala-logo.png" alt="Qualai logo" width={100} height={100} />
             Qualai
           </div>
           <span className="nav-tag">Coming soon</span>
@@ -294,14 +304,17 @@ export default function Home() {
           <h1>Hear what your<br />team <em>really</em> feels</h1>
 
           <p className="tagline">
-            Qualai turns anonymous pulse survey responses into research-grade insights —
-            so HR teams at small companies can understand employee sentiment and actually act on it.
+            Qualitative responses take significant time and expertise to analyze. Most surveys aren't truly anonymous — so employees hold back. And the tools that exist are built for enterprises, not small teams. Qualai changes that.
           </p>
 
-          <div className="waitlist">
-            <input type="email" placeholder="your@email.com" />
-            <button>Notify me</button>
-          </div>
+          <a
+          href="https://tally.so/r/0Qo910"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="waitlist-btn"
+          >
+            Join the waitlist
+          </a>
 
           <div className="features">
             <div className="feature">
