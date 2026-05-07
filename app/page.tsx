@@ -301,7 +301,7 @@ export default function Home() {
         <main>
           <div className="eyebrow">Qualitative AI for HR</div>
 
-          <h1>Hear what your<br />team <em>really</em> feels</h1>
+          <h1>Understand what your<br />team <em>really</em> feels</h1>
 
           <p className="tagline">
             Qualitative responses take significant time and expertise to analyze. Most surveys aren't truly anonymous — so employees hold back. And the tools that exist are built for enterprises, not small teams. Qualai changes that.
