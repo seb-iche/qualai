@@ -78,6 +78,22 @@ Produce a thematic summary per category and a 2-3 paragraph executive synthesis 
     const tokenEstimate = responses.length * 150
     const costEstimate = (tokenEstimate * 3 * 0.000015).toFixed(4)
 
+    // Save to Supabase
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+
+    await supabase.from('analyses').insert({
+    question,
+    response_count: responses.length,
+    codes,
+    categories,
+    executive_summary: executiveSummary,
+    cost_estimate: costEstimate
+    })
+
     return NextResponse.json({ codes, categories, executiveSummary, costEstimate, responseCount: responses.length })
 
 } catch (error) {
