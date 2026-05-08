@@ -28,8 +28,14 @@ Question: ${question}
 Responses:
 ${responseList}
 
-For each response segment, create a code containing 3–5 keywords using only words from the original comment. Each code on a separate line, no bullets or numbers.`
-      }]
+Instructions:
+- For each response segment, create a code containing 3–5 keywords using only words from the original comment.
+- Remove stop words that add no meaning (e.g. is, of, the) unless they preserve the idea.
+- Each code must represent only one idea. If a segment has two ideas, split into two codes.
+- MINIMUM 3 keywords per code. If a response is too short or vague to produce 3 meaningful keywords, write the code as: [LOW CONFIDENCE] + whatever keywords exist.
+- Each code on a separate line, no bullets or numbers.`
+
+}]
     })
 
     const codes = coding.content[0].type === 'text' ? coding.content[0].text : ''
@@ -45,7 +51,14 @@ For each response segment, create a code containing 3–5 keywords using only wo
 Codes extracted:
 ${codes}
 
-Group these codes into themes. For each code label sentiment as Positive, Negative, or Neutral.
+Instructions:
+- Group codes into themes. Assign each code to one theme.
+- Themes must be concise and descriptive (e.g. Planning & Clarity, Collaboration & Teams).
+- Classify sentiment for each code as Positive, Negative, or Neutral.
+- ANY code marked [LOW CONFIDENCE] must be grouped into a separate category called exactly: "Flagged for Review"
+- Do not mix [LOW CONFIDENCE] codes into regular themes.
+- Count polarity per category.
+
 
 Format:
 Category: [Name]

@@ -177,7 +177,7 @@ export default function AnalyzePage() {
 
       <div className="page">
         <a href="/" className="logo">
-          <img src="/koala-logo.png" alt="Qualai" width={36} height={36} />
+            <img src="/koala-logo.svg" alt="Qualai" width={60} height={60} style={{display:'block', marginTop:'8px'}} />
           Qualai
         </a>
 

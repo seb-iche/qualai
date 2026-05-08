@@ -24,7 +24,7 @@ export default function Home() {
           display: flex;
           flex-direction: column;
           position: relative;
-          overflow: hidden;
+          overflow-x: hidden;
         }
 
         .grain {
@@ -292,10 +292,13 @@ export default function Home() {
 
         <nav>
           <div className="logo">
-            <img src="/koala-logo.png" alt="Qualai logo" width={100} height={100} />
-            Qualai
+            <img src="/koala-logo.svg" alt="Qualai" width={60} height={60} style={{display:'block', marginTop:'8px'}} />            Qualai
           </div>
-          <span className="nav-tag">Coming soon</span>
+          <div style={{display:'flex', alignItems:'center', gap:'24px'}}>
+          <a href="/analyze" style={{fontSize:'12px', color:'var(--green)', textDecoration:'none', letterSpacing:'0.04em'}}>Try it free</a>
+          <a href="/dashboard" style={{fontSize:'12px', color:'var(--muted)', textDecoration:'none', letterSpacing:'0.04em'}}>Dashboard</a>
+          <span className="nav-tag">Beta</span>
+          </div>
         </nav>
 
         <main>

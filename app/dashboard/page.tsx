@@ -141,7 +141,7 @@ export default function DashboardPage() {
       <div className="page">
         <div className="topbar">
           <a href="/" className="logo">
-            <img src="/koala-logo.png" alt="Qualai" width={32} height={32} />
+            <img src="/koala-logo.svg" alt="Qualai" width={60} height={60} style={{display:'block', marginTop:'8px'}} />
             Qualai
           </a>
           <div className="nav-links">
