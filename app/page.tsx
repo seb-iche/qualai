@@ -323,25 +323,47 @@ export default function Home() {
             <div className="feature">
               <div className="feature-dot" />
               <div className="feature-text">
-                <strong>Truly anonymous</strong>
-                No logins, no tracking. Responses are never linked to identities.
+                <strong>Architectural anonymity</strong>
+                The pipeline dissolves individual voices into collective patterns at every stage — not by policy, but by methodology.
               </div>
             </div>
             <div className="feature">
               <div className="feature-dot" />
               <div className="feature-text">
-                <strong>Research-grade analysis</strong>
-                3-stage qualitative coding pipeline built on academic HR standards.
+                <strong>Research-grade methodology</strong>
+                A 3-stage coding pipeline modeled on academic HR/OB research standards. Every insight traces back to an original comment.
               </div>
             </div>
             <div className="feature">
               <div className="feature-dot" />
               <div className="feature-text">
-                <strong>Action-first insights</strong>
-                Not just dashboards — specific recommendations your team can act on.
+                <strong>Qualitative analysis on the fly</strong>
+                Paste responses, click analyze. Get a structured report with themes, sentiment, and executive recommendations in seconds.
               </div>
             </div>
           </div>
+
+          <div style={{
+            marginTop: '80px',
+            padding: '48px',
+            border: '1px solid var(--border)',
+            borderRadius: '12px',
+            maxWidth: '700px',
+            width: '100%',
+            textAlign: 'left'
+          }}>
+            <div className="eyebrow" style={{justifyContent:'flex-start', marginBottom:'20px'}}>Why Qualai</div>
+            <p style={{fontSize:'13px', color:'var(--muted)', lineHeight:'1.8', fontFamily:'DM Mono, monospace', fontWeight:300, marginBottom:'16px'}}>
+              Most HR tools claim anonymity through a privacy policy. Qualai builds it into the methodology — by the time insights reach leadership, individual voices have been dissolved into collective patterns across three analysis stages.
+            </p>
+            <p style={{fontSize:'13px', color:'var(--muted)', lineHeight:'1.8', fontFamily:'DM Mono, monospace', fontWeight:300, marginBottom:'16px'}}>
+              A single AI prompt can summarize feedback. But it can't guarantee repeatability, auditability, or protection against hallucination. Qualai's structured pipeline enforces the same rigorous process on every analysis — so results are comparable across time and defensible in a leadership meeting.
+            </p>
+            <p style={{fontSize:'13px', color:'var(--muted)', lineHeight:'1.8', fontFamily:'DM Mono, monospace', fontWeight:300}}>
+              Built for teams of 5–50 who can't afford enterprise HR software but deserve enterprise-grade insight.
+            </p>
+          </div>
+
         </main>
 
         <footer>
