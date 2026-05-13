@@ -1,12 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY
-})
-
 export async function POST(request: NextRequest) {
-  const { question, responses } = await request.json()
+  const { question, responses, userApiKey } = await request.json()
+
+  // Use user's own key if provided, otherwise fall back to Qualai's key
+  const apiKey = userApiKey || process.env.ANTHROPIC_API_KEY
+  const client = new Anthropic({ apiKey })
 
   if (!question || !responses || responses.length === 0) {
     return NextResponse.json({ error: 'Missing question or responses' }, { status: 400 })
@@ -34,8 +34,7 @@ Instructions:
 - Each code must represent only one idea. If a segment has two ideas, split into two codes.
 - MINIMUM 3 keywords per code. If a response is too short or vague to produce 3 meaningful keywords, write the code as: [LOW CONFIDENCE] + whatever keywords exist.
 - Each code on a separate line, no bullets or numbers.`
-
-}]
+      }]
     })
 
     const codes = coding.content[0].type === 'text' ? coding.content[0].text : ''
@@ -58,7 +57,6 @@ Instructions:
 - ANY code marked [LOW CONFIDENCE] must be grouped into a separate category called exactly: "Flagged for Review"
 - Do not mix [LOW CONFIDENCE] codes into regular themes.
 - Count polarity per category.
-
 
 Format:
 Category: [Name]
@@ -94,22 +92,22 @@ Produce a thematic summary per category and a 2-3 paragraph executive synthesis 
     // Save to Supabase
     const { createClient } = await import('@supabase/supabase-js')
     const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
 
     await supabase.from('analyses').insert({
-    question,
-    response_count: responses.length,
-    codes,
-    categories,
-    executive_summary: executiveSummary,
-    cost_estimate: costEstimate
+      question,
+      response_count: responses.length,
+      codes,
+      categories,
+      executive_summary: executiveSummary,
+      cost_estimate: costEstimate
     })
 
     return NextResponse.json({ codes, categories, executiveSummary, costEstimate, responseCount: responses.length })
 
-} catch (error) {
+  } catch (error) {
     console.error(error)
     return NextResponse.json({ error: 'Analysis failed' }, { status: 500 })
   }

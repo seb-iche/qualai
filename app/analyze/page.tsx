@@ -26,11 +26,14 @@ export default function AnalyzePage() {
     }
 
     try {
-      const res = await fetch('/api/analyze', {
+        const userApiKey = localStorage.getItem('qualai_api_key') || ''
+        const demoAccess = localStorage.getItem('qualai_demo_access') === 'true'
+
+        const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, responses: responseList })
-      })
+        body: JSON.stringify({ question, responses: responseList, userApiKey, demoAccess })
+        })
 
       const data = await res.json()
       if (data.error) throw new Error(data.error)
@@ -176,10 +179,17 @@ export default function AnalyzePage() {
       `}</style>
 
       <div className="page">
-        <a href="/" className="logo">
-            <img src="/koala-logo.svg" alt="Qualai" width={60} height={60} style={{display:'block', marginTop:'8px'}} />
-          Qualai
-        </a>
+        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'48px'}}>
+            <a href="/" style={{display:'flex', alignItems:'center', gap:'8px', fontFamily:'DM Serif Display, serif', fontSize:'20px', color:'var(--text)', textDecoration:'none'}}>
+                <img src="/koala-logo.svg" alt="Qualai" width={60} height={60} style={{display:'block', marginTop:'8px'}} />
+                Qualai
+            </a>
+            <div style={{display:'flex', gap:'24px'}}>
+                <a href="/analyze" style={{fontSize:'12px', color:'var(--green)', textDecoration:'none', letterSpacing:'0.04em'}}>New analysis</a>
+                <a href="/dashboard" style={{fontSize:'12px', color:'var(--muted)', textDecoration:'none', letterSpacing:'0.04em'}}>Dashboard</a>
+                <a href="/settings" style={{fontSize:'12px', color:'var(--muted)', textDecoration:'none', letterSpacing:'0.04em'}}>Settings</a>
+            </div>
+        </div>
 
         <h1>Analyze responses</h1>
         <p className="subtitle">

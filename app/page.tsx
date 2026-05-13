@@ -297,6 +297,7 @@ export default function Home() {
           <div style={{display:'flex', alignItems:'center', gap:'24px'}}>
           <a href="/analyze" style={{fontSize:'12px', color:'var(--green)', textDecoration:'none', letterSpacing:'0.04em'}}>Try it free</a>
           <a href="/dashboard" style={{fontSize:'12px', color:'var(--muted)', textDecoration:'none', letterSpacing:'0.04em'}}>Dashboard</a>
+          <a href="/settings" style={{fontSize:'12px', color:'var(--muted)', textDecoration:'none', letterSpacing:'0.04em'}}>Settings</a>
           <span className="nav-tag">Beta</span>
           </div>
         </nav>

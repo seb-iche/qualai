@@ -153,7 +153,7 @@ export default function DashboardPage() {
     doc.text(`Top theme: ${themes[0].name}   |   Total themes identified: ${themes.length}`, 20, y)
     y += 5.5
     }
-    
+
     y += 8
     doc.line(20, y, 190, y)
 
@@ -267,6 +267,7 @@ export default function DashboardPage() {
           <div className="nav-links">
             <a href="/analyze" className="nav-link">New analysis</a>
             <a href="/dashboard" className="nav-link active">Dashboard</a>
+            <a href="/settings" className="nav-link">Settings</a>
           </div>
         </div>
 
