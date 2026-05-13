@@ -86,6 +86,14 @@ export default function DashboardPage() {
   })
 
   const exportPDF = async (analysis: Analysis) => {
+    const cleanText = (text: string) => text
+        .replace(/#{1,3}\s/g, '')
+        .replace(/\*\*/g, '')
+        .replace(/\*/g, '')
+        .replace(/→/g, '->')
+        .replace(/---/g, '')
+        .replace(/^\s*[-•]\s/gm, '• ')
+        .trim()
     const { jsPDF } = await import('jspdf')
     const doc = new jsPDF()
 
@@ -133,8 +141,19 @@ export default function DashboardPage() {
 
     doc.setFontSize(10)
     doc.setTextColor(...muted)
-    doc.text(`Responses: ${analysis.response_count}   |   Positive: ${pos}   Negative: ${neg}   Neutral: ${neu}   |   Positive ratio: ${ratio}%`, 20, y)
+    doc.text(`Responses analyzed: ${analysis.response_count}`, 20, y)
+    y += 5.5
+    doc.text(`Positive codes: ${pos}   |   Negative codes: ${neg}   |   Neutral codes: ${neu}`, 20, y)
+    y += 5.5
+    doc.text(`Positive ratio: ${ratio}%   |   Avg codes per response: ${(total / analysis.response_count).toFixed(1)}`, 20, y)
+    y += 5.5
 
+    const themes = parseThemes(analysis.categories)
+    if (themes.length > 0) {
+    doc.text(`Top theme: ${themes[0].name}   |   Total themes identified: ${themes.length}`, 20, y)
+    y += 5.5
+    }
+    
     y += 8
     doc.line(20, y, 190, y)
 
@@ -148,7 +167,7 @@ export default function DashboardPage() {
     doc.setFontSize(10)
     doc.setTextColor(...dark)
     doc.setFont('helvetica', 'normal')
-    const summaryLines = doc.splitTextToSize(analysis.executive_summary, 170)
+    const summaryLines = doc.splitTextToSize(cleanText(analysis.executive_summary), 170)
     summaryLines.forEach((line: string) => {
       if (y > 270) { doc.addPage(); y = 20 }
       doc.text(line, 20, y)
@@ -166,7 +185,7 @@ export default function DashboardPage() {
     doc.setFontSize(10)
     doc.setTextColor(...dark)
     doc.setFont('helvetica', 'normal')
-    const categoryLines = doc.splitTextToSize(analysis.categories, 170)
+    const categoryLines = doc.splitTextToSize(cleanText(analysis.categories), 170)
     categoryLines.forEach((line: string) => {
       if (y > 270) { doc.addPage(); y = 20 }
       doc.text(line, 20, y)
