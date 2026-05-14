@@ -8,6 +8,40 @@ export async function POST(request: NextRequest) {
   const apiKey = userApiKey || process.env.ANTHROPIC_API_KEY
   const client = new Anthropic({ apiKey })
 
+// Prompt 0: Question type detection
+const typeDetection = await client.messages.create({
+    model: 'claude-sonnet-4-5',
+    max_tokens: 100,
+    messages: [{
+        role: 'user',
+        content: `Classify this HR survey question into exactly one category. Read carefully.
+
+        SENTIMENT — the question asks employees how they FEEL, what their EXPERIENCE is like, or about their WELLBEING. Examples: "How do you feel about...", "What is your experience with...", "How satisfied are you with..."
+
+        STRATEGIC — the question asks what should be PRIORITIZED, CHANGED, or IMPROVED at an organizational level. Examples: "What should we focus on...", "What would you change about...", "What are your suggestions for..."
+
+        PROCESS — the question asks how a specific WORKFLOW, PROCEDURE, or SYSTEM is working. Examples: "How is the hiring process working...", "What is your experience with the onboarding process...", "How effective is our performance review..."
+
+        EXPLORATION — anything that doesn't clearly fit above.
+
+        Question to classify: "${question}"
+
+        Rules:
+        - If the question contains "prioritize", "should we", "improve", "suggestions" → STRATEGIC
+        - If the question contains "feel", "experience", "satisfied", "happy", "culture" → SENTIMENT  
+        - If the question contains "process", "procedure", "system", "tool" AND asks how it works → PROCESS
+        - When in doubt between strategic and process → STRATEGIC
+
+        Reply with ONLY one word in lowercase: sentiment, strategic, process, or exploration.`
+    }]
+    })
+
+    const questionType = typeDetection.content[0].type === 'text' 
+    ? typeDetection.content[0].text.trim().toLowerCase().split(/\s+/)[0]
+    : 'sentiment'
+
+console.log('Prompt 0 raw response:', typeDetection.content[0])
+
   if (!question || !responses || responses.length === 0) {
     return NextResponse.json({ error: 'Missing question or responses' }, { status: 400 })
   }
@@ -97,17 +131,18 @@ Produce a thematic summary per category and a 2-3 paragraph executive synthesis 
     )
 
     await supabase.from('analyses').insert({
-      question,
-      response_count: responses.length,
-      codes,
-      categories,
-      executive_summary: executiveSummary,
-      cost_estimate: costEstimate
+    question,
+    response_count: responses.length,
+    codes,
+    categories,
+    executive_summary: executiveSummary,
+    cost_estimate: costEstimate,
+    question_type: questionType
     })
 
-    return NextResponse.json({ codes, categories, executiveSummary, costEstimate, responseCount: responses.length })
+    return NextResponse.json({ codes, categories, executiveSummary, costEstimate, responseCount: responses.length, questionType })
 
-  } catch (error) {
+} catch (error) {
     console.error(error)
     return NextResponse.json({ error: 'Analysis failed' }, { status: 500 })
   }

@@ -12,6 +12,7 @@ interface Analysis {
   executive_summary: string
   categories: string
   cost_estimate: string
+  question_type: string
   created_at: string
 }
 
@@ -354,23 +355,43 @@ export default function DashboardPage() {
             </div>
 
                 <div className="stats-row">
-                  <div className="stat-card">
-                    <div className="stat-num" style={{color:'var(--green)'}}>{pos}</div>
-                    <div className="stat-label">Positive codes</div>
-                  </div>
-                  <div className="stat-card">
-                    <div className="stat-num" style={{color:'var(--red)'}}>{neg}</div>
-                    <div className="stat-label">Negative codes</div>
-                  </div>
-                  <div className="stat-card">
-                    <div className="stat-num" style={{color:'var(--amber)'}}>{neu}</div>
-                    <div className="stat-label">Neutral codes</div>
-                  </div>
-                  <div className="stat-card">
-                    <div className="stat-num" style={{color:'var(--text)'}}>{sentimentRatio}%</div>
-                    <div className="stat-label">Positive ratio</div>
-                  </div>
-                </div>
+                    <div className="stat-card">
+                        <div className="stat-num" style={{color:'var(--green)'}}>{pos}</div>
+                        <div className="stat-label">
+                        {selected.question_type === 'strategic' ? 'Opportunity signals' :
+                        selected.question_type === 'process' ? 'Working well' :
+                        selected.question_type === 'exploration' ? 'Positive themes' :
+                        'Positive codes'}
+                        </div>
+                    </div>
+                    <div className="stat-card">
+                        <div className="stat-num" style={{color:'var(--red)'}}>{neg}</div>
+                        <div className="stat-label">
+                        {selected.question_type === 'strategic' ? 'Pain points' :
+                        selected.question_type === 'process' ? 'Needs improvement' :
+                        selected.question_type === 'exploration' ? 'Negative themes' :
+                        'Negative codes'}
+                        </div>
+                    </div>
+                    <div className="stat-card">
+                        <div className="stat-num" style={{color:'var(--amber)'}}>{neu}</div>
+                        <div className="stat-label">
+                        {selected.question_type === 'strategic' ? 'Considerations' :
+                        selected.question_type === 'process' ? 'Unclear signals' :
+                        selected.question_type === 'exploration' ? 'Neutral themes' :
+                        'Neutral codes'}
+                        </div>
+                    </div>
+                    <div className="stat-card">
+                        <div className="stat-num" style={{color:'var(--text)'}}>{sentimentRatio}%</div>
+                        <div className="stat-label">
+                        {selected.question_type === 'strategic' ? 'Opportunity ratio' :
+                        selected.question_type === 'process' ? 'Satisfaction rate' :
+                        selected.question_type === 'exploration' ? 'Positive ratio' :
+                        'Positive ratio'}
+                        </div>
+                    </div>
+                    </div>
 
                 <div className="stats-row" style={{gridTemplateColumns:'1fr 1fr', marginBottom:'24px'}}>
                   <div className="stat-card" style={{textAlign:'left', padding:'16px 20px'}}>
