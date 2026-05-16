@@ -23,11 +23,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{__html: `
+          try {
+            const theme = localStorage.getItem('qualai_theme');
+            if (theme === 'light') document.documentElement.classList.add('light');
+          } catch(e) {}
+        `}} />
+      </head>
+      <body>{children}</body>
     </html>
   );
 }

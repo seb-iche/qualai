@@ -1,4 +1,29 @@
+'use client'
+import { useEffect, useState } from 'react'
+
 export default function Home() {
+  const [light, setLight] = useState(false)
+
+  useEffect(() => {
+    const saved = localStorage.getItem('qualai_theme')
+    if (saved === 'light') {
+      setLight(true)
+      document.documentElement.classList.add('light')
+    }
+  }, [])
+
+  const toggleTheme = () => {
+    const next = !light
+    setLight(next)
+    if (next) {
+      document.documentElement.classList.add('light')
+      localStorage.setItem('qualai_theme', 'light')
+    } else {
+      document.documentElement.classList.remove('light')
+      localStorage.setItem('qualai_theme', 'dark')
+    }
+  }
+
   return (
     <>
       <style>{`
@@ -6,15 +31,25 @@ export default function Home() {
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        :root {
-          --bg: #0e0f0d;
-          --surface: #161710;
-          --green: #7db87a;
-          --green-dim: #4a7a47;
-          --text: #e8e6df;
-          --muted: #7a7870;
-          --border: rgba(125, 184, 122, 0.15);
-        }
+      :root {
+        --bg: #0e0f0d;
+        --surface: #161710;
+        --green: #7db87a;
+        --green-dim: #4a7a47;
+        --text: #e8e6df;
+        --muted: #7a7870;
+        --border: rgba(125, 184, 122, 0.15);
+      }
+
+      :root.light {
+        --bg: #f5f4f0;
+        --surface: #ffffff;
+        --green: #2E7D32;
+        --green-dim: #4a7a47;
+        --text: #1a1a1a;
+        --muted: #666666;
+        --border: rgba(46, 125, 50, 0.15);
+      }
 
         html, body { height: 100%; background: var(--bg); color: var(--text); }
 
@@ -283,6 +318,23 @@ export default function Home() {
           footer { flex-direction: column; gap: 8px; text-align: center; }
           .features { gap: 20px; }
         }
+        
+        @media (max-width: 768px) {
+        nav { padding: 16px 20px; }
+        .logo { font-size: 18px; }
+        .logo img { width: 40px !important; height: 40px !important; }
+        nav div { gap: 12px; }
+        nav a { font-size: 11px; }
+        h1 { font-size: clamp(36px, 10vw, 88px); }
+        main { padding: 40px 20px; }
+        .features { flex-direction: column; gap: 16px; }
+        .feature { max-width: 100%; }
+        .waitlist-btn { width: 100%; text-align: center; padding: 14px 20px; }
+        footer { padding: 16px 20px; font-size: 10px; }
+        .how-it-works-grid { grid-template-columns: repeat(2, 1fr) !important; }
+      }
+
+        }
       `}</style>
 
       <div className="page">
@@ -298,6 +350,21 @@ export default function Home() {
           <a href="/analyze" style={{fontSize:'12px', color:'var(--green)', textDecoration:'none', letterSpacing:'0.04em'}}>Try it free</a>
           <a href="/dashboard" style={{fontSize:'12px', color:'var(--muted)', textDecoration:'none', letterSpacing:'0.04em'}}>Dashboard</a>
           <a href="/settings" style={{fontSize:'12px', color:'var(--muted)', textDecoration:'none', letterSpacing:'0.04em'}}>Settings</a>
+          
+          <button onClick={toggleTheme} style={{
+            background: 'transparent',
+            border: '1px solid var(--border)',
+            color: 'var(--muted)',
+            padding: '4px 12px',
+            borderRadius: '99px',
+            fontSize: '11px',
+            fontFamily: 'DM Mono, monospace',
+            cursor: 'pointer',
+            letterSpacing: '0.04em'
+          }}>
+            {light ? '☀️ Light' : '🌙 Dark'}
+          </button>
+
           <span className="nav-tag">Beta</span>
           </div>
         </nav>
@@ -305,7 +372,7 @@ export default function Home() {
         <main>
           <div className="eyebrow">Qualitative AI for HR</div>
 
-          <h1>Understand what your<br />team <em>really</em> feels</h1>
+          <h1>Understand what<br />your team <em>really</em> feels</h1>
 
           <p className="tagline">
             Qualitative responses take significant time and expertise to analyze. Most surveys aren't truly anonymous — so employees hold back. And the tools that exist are built for enterprises, not small teams. Qualai changes that.
@@ -351,7 +418,7 @@ export default function Home() {
           }}>
             <div className="eyebrow" style={{justifyContent:'flex-start', marginBottom:'20px'}}>How it works</div>
             
-            <div style={{display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'8px'}}>
+            <div className="how-it-works-grid" style={{display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'8px'}}>
               {[
                 { num: '00', title: 'Question type detection', desc: 'Qualai reads your question and determines what kind of analysis is needed — sentiment, strategic, process, or exploratory.' },
                 { num: '01', title: 'Qualitative coding', desc: 'Every response is coded into 3-5 keywords using only words from the original comment. No invented language, ever.' },
@@ -400,8 +467,8 @@ export default function Home() {
         </main>
 
         <footer>
-          <span>© 2025 Qualai - Sebastian Roa Viertel - LinkedIn: @sebasroavi</span>
-          <span>Built for teams of 5–50</span>
+        <span>© 2026 Qualai — Sebastian Roa Viertel</span>
+        <a href="https://linkedin.com/in/sebasroavi" target="_blank" rel="noopener noreferrer" style={{color:'var(--muted)', textDecoration:'none', fontSize:'11px'}}>LinkedIn @sebasroavi</a>
         </footer>
       </div>
     </>

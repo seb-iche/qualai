@@ -170,6 +170,20 @@ export default function AnalyzePage() {
 
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         @keyframes fillBar { 0% { width: 0%; } 50% { width: 70%; } 100% { width: 40%; } }
+        
+        @media (max-width: 768px) {
+        .topbar { padding: 16px 20px; }
+        .nav-links { gap: 12px; }
+        .nav-link { font-size: 11px; }
+        .input-section { padding: 24px 16px; }
+        h1 { font-size: 24px; }
+        .pipeline { grid-template-columns: 1fr 1fr; gap: 8px; }
+        .stage-window { font-size: 11px; }
+        .pipeline-section { padding: 0 16px; }
+        .done-banner { flex-direction: column; gap: 12px; padding: 16px; }
+        .done-links { width: 100%; justify-content: center; }
+        }
+        
       `}</style>
 
       <div className="page">

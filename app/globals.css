@@ -1,9 +1,20 @@
 @import "tailwindcss";
 
+:root.light {
+  --bg: #f5f4f0;
+  --surface: #ffffff;
+  --green: #2E7D32;
+  --green-dim: #4a7a47;
+  --text: #1a1a1a;
+  --muted: #666666;
+  --border: rgba(46, 125, 50, 0.15);
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
 }
+
 
 @theme inline {
   --color-background: var(--background);

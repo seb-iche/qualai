@@ -320,6 +320,19 @@ export default function DashboardPage() {
         .new-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--green); color: #0e0f0d; border: none; padding: 10px 20px; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 6px; cursor: pointer; text-decoration: none; transition: background 0.2s; margin-top: 16px; }
         .new-btn:hover { background: #8ec98b; }
         .custom-tooltip { background: #1e2018; border: 1px solid rgba(125,184,122,0.2); border-radius: 6px; padding: 8px 12px; font-size: 11px; color: var(--text); font-family: 'DM Mono', monospace; }
+
+        @media (max-width: 768px) {
+        .page { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr; }
+        .topbar { padding: 16px 20px; }
+        .nav-links { gap: 12px; }
+        .nav-link { font-size: 11px; }
+        .sidebar { border-right: none; border-bottom: 1px solid var(--border); max-height: 200px; }
+        .main { padding: 20px 16px; }
+        .stats-row { grid-template-columns: repeat(2, 1fr); }
+        .charts-row { grid-template-columns: 1fr; }
+        .detail-question { font-size: 18px; }
+        .detail-meta { flex-wrap: wrap; gap: 8px; }
+        }
       `}</style>
 
       <div className="page">
