@@ -463,6 +463,51 @@ export default function Home() {
               Built for teams of 5–50 who can't afford enterprise HR software but deserve enterprise-grade insight.
             </p>
           </div>
+        
+        <div style={{
+          marginTop: '48px',
+          padding: '48px',
+          border: '1px solid var(--border)',
+          borderRadius: '12px',
+          maxWidth: '700px',
+          width: '100%',
+          textAlign: 'center',
+          background: 'var(--surface)'
+        }}>
+          <div className="eyebrow" style={{justifyContent:'center', marginBottom:'20px'}}>Work with me</div>
+          
+          <h2 style={{fontFamily:'DM Serif Display, serif', fontSize:'28px', color:'var(--text)', marginBottom:'16px', lineHeight:'1.3'}}>
+            Interested in bringing this kind of thinking to your organization?
+          </h2>
+          
+          <p style={{fontSize:'13px', color:'var(--muted)', lineHeight:'1.8', fontFamily:'DM Mono, monospace', fontWeight:300, marginBottom:'32px'}}>
+            I'm a recent Employment Relations graduate from Queen's University actively looking for opportunities in HR analytics, people ops, and organizational development. I also take on consulting projects — if your HR team or consulting firm needs a custom qualitative analysis tool, a people analytics solution, or just someone who thinks deeply about the intersection of HR and AI, let's talk.
+          </p>
+
+          <div style={{display:'flex', gap:'12px', justifyContent:'center', flexWrap:'wrap'}}>
+            <a href="https://linkedin.com/in/sebasroavi" target="_blank" rel="noopener noreferrer" style={{
+              display:'inline-flex', alignItems:'center', gap:'6px',
+              background:'var(--green)', color:'#0e0f0d',
+              padding:'12px 24px', borderRadius:'8px',
+              fontSize:'12px', fontFamily:'DM Mono, monospace',
+              letterSpacing:'0.06em', textTransform:'uppercase',
+              textDecoration:'none', transition:'background 0.2s'
+            }}>
+              Connect on LinkedIn
+            </a>
+            <a href="mailto:sroaviertel@gmail.com,sebasroavi@gmail.com" style={{
+              display:'inline-flex', alignItems:'center', gap:'6px',
+              background:'transparent', color:'var(--text)',
+              border:'1px solid var(--border)',
+              padding:'12px 24px', borderRadius:'8px',
+              fontSize:'12px', fontFamily:'DM Mono, monospace',
+              letterSpacing:'0.06em', textTransform:'uppercase',
+              textDecoration:'none', transition:'all 0.2s'
+            }}>
+              Send me an email
+            </a>
+          </div>
+        </div>
 
         </main>
 
