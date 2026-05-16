@@ -92,7 +92,7 @@ export default function SettingsPage() {
             Qualai
           </a>
           <div className="nav-links">
-            <a href="/analyze" className="nav-link">New analysis</a>
+
             <a href="/dashboard" className="nav-link">Dashboard</a>
             <a href="/settings" className="nav-link active">Settings</a>
           </div>
