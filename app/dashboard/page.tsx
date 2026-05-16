@@ -51,7 +51,23 @@ const parseThemes = (categories: string): Theme[] => {
   return themes.sort((a, b) => b.total - a.total)
 }
 
-const getSentimentCounts = (categories: string) => {
+const getSentimentCounts = (categories: string, questionType: string = 'sentiment') => {
+  if (questionType === 'strategic') {
+    const opportunities = (categories.match(/Opportunity/g) || []).length
+    const blockers = (categories.match(/Blocker/g) || []).length
+    const considerations = (categories.match(/Consideration/g) || []).length
+    return { pos: opportunities, neg: blockers, neu: considerations }
+  } else if (questionType === 'process') {
+    const working = (categories.match(/Working Well/g) || []).length
+    const needs = (categories.match(/Needs Improvement/g) || []).length
+    const unclear = (categories.match(/Unclear/g) || []).length
+    return { pos: working, neg: needs, neu: unclear }
+  } else if (questionType === 'exploration') {
+    const prominent = (categories.match(/Prominent/g) || []).length
+    const emerging = (categories.match(/Emerging/g) || []).length
+    const peripheral = (categories.match(/Peripheral/g) || []).length
+    return { pos: prominent, neg: emerging, neu: peripheral }
+  }
   const themes = parseThemes(categories)
   return themes.reduce((acc, t) => ({
     pos: acc.pos + t.positive,
@@ -136,7 +152,7 @@ export default function DashboardPage() {
     doc.text(questionLines, 20, y)
     y += questionLines.length * 6 + 6
 
-    const { pos, neg, neu } = getSentimentCounts(analysis.categories)
+    const { pos, neg, neu } = getSentimentCounts(analysis.categories, analysis.question_type)
     const total = pos + neg + neu
     const ratio = total > 0 ? Math.round((pos / total) * 100) : 0
 
@@ -279,7 +295,7 @@ export default function DashboardPage() {
             <div style={{padding:'20px',fontSize:'12px',color:'var(--muted)',lineHeight:1.6}}>No analyses yet.</div>
           )}
           {analyses.map(a => {
-            const { pos, neg, neu } = getSentimentCounts(a.categories)
+            const { pos, neg, neu } = getSentimentCounts(a.categories, a.question_type)
             return (
               <div key={a.id} className={`analysis-item ${selected?.id === a.id ? 'active' : ''}`} onClick={() => setSelected(a)}>
                 <div className="item-question">{a.question}</div>
@@ -307,7 +323,7 @@ export default function DashboardPage() {
 
           {selected && (() => {
             const themes = parseThemes(selected.categories)
-            const { pos, neg, neu } = getSentimentCounts(selected.categories)
+            const { pos, neg, neu } = getSentimentCounts(selected.categories, selected.question_type)
             const total = pos + neg + neu
             const dominantTheme = themes[0]?.name || 'N/A'
             const sentimentRatio = total > 0 ? Math.round((pos / total) * 100) : 0

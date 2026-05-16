@@ -73,53 +73,134 @@ Instructions:
 
     const codes = coding.content[0].type === 'text' ? coding.content[0].text : ''
 
-    // Prompt 2: Categorization
+    // Prompt 2: Categorization — branched by question type
+    const prompt2Content = questionType === 'strategic' ? 
+    `You are a PhD Analyst performing thematic categorization for a STRATEGIC HR question.
+
+    Codes extracted:
+    ${codes}
+
+    Instructions:
+    - Group codes into themes representing strategic priorities.
+    - For each code classify as: Opportunity (positive signal for improvement), Blocker (barrier or pain point), or Consideration (neutral or context-dependent).
+    - ANY code marked [LOW CONFIDENCE] must go into a category called exactly: "Flagged for Review"
+    - Count per category: Opportunities, Blockers, Considerations.
+
+    Format:
+    Category: [Name]
+    code → Opportunity/Blocker/Consideration
+    Counts: Opportunities: X | Blockers: Y | Considerations: Z`
+
+    : questionType === 'process' ?
+    `You are a PhD Analyst performing thematic categorization for a PROCESS EVALUATION HR question.
+
+    Codes extracted:
+    ${codes}
+
+    Instructions:
+    - Group codes into themes representing process areas.
+    - For each code classify as: Working Well (positive), Needs Improvement (negative), or Unclear (neutral/ambiguous).
+    - ANY code marked [LOW CONFIDENCE] must go into a category called exactly: "Flagged for Review"
+    - Count per category: Working Well, Needs Improvement, Unclear.
+
+    Format:
+    Category: [Name]
+    code → Working Well/Needs Improvement/Unclear
+    Counts: Working Well: X | Needs Improvement: Y | Unclear: Z`
+
+    : questionType === 'exploration' ?
+    `You are a PhD Analyst performing thematic categorization for an EXPLORATORY HR question.
+
+    Codes extracted:
+    ${codes}
+
+    Instructions:
+    - Group codes into emerging themes based on frequency and similarity.
+    - For each code note: Prominent (appears frequently or strongly), Emerging (mentioned but less developed), or Peripheral (minor or isolated).
+    - ANY code marked [LOW CONFIDENCE] must go into a category called exactly: "Flagged for Review"
+    - Count per category: Prominent, Emerging, Peripheral.
+
+    Format:
+    Category: [Name]
+    code → Prominent/Emerging/Peripheral
+    Counts: Prominent: X | Emerging: Y | Peripheral: Z`
+
+    :
+    `You are a PhD Analyst performing thematic categorization for a SENTIMENT HR question.
+
+    Codes extracted:
+    ${codes}
+
+    Instructions:
+    - Group codes into themes. Assign each code to one theme.
+    - Themes must be concise and descriptive (e.g. Planning & Clarity, Collaboration & Teams).
+    - Classify sentiment for each code as Positive, Negative, or Neutral.
+    - ANY code marked [LOW CONFIDENCE] must go into a category called exactly: "Flagged for Review"
+    - Do not mix [LOW CONFIDENCE] codes into regular themes.
+    - Count polarity per category.
+
+    Format:
+    Category: [Name]
+    code → Polarity
+    Counts: Positive: X | Negative: Y | Neutral: Z`
+
     const categorization = await client.messages.create({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 1000,
-      messages: [{
-        role: 'user',
-        content: `You are a PhD Analyst with over 20 years of experience in HR and qualitative analysis, performing thematic categorization.
-
-Codes extracted:
-${codes}
-
-Instructions:
-- Group codes into themes. Assign each code to one theme.
-- Themes must be concise and descriptive (e.g. Planning & Clarity, Collaboration & Teams).
-- Classify sentiment for each code as Positive, Negative, or Neutral.
-- ANY code marked [LOW CONFIDENCE] must be grouped into a separate category called exactly: "Flagged for Review"
-- Do not mix [LOW CONFIDENCE] codes into regular themes.
-- Count polarity per category.
-
-Format:
-Category: [Name]
-code → Polarity
-Counts: Positive: X | Negative: Y | Neutral: Z`
-      }]
+    model: 'claude-sonnet-4-5',
+    max_tokens: 1000,
+    messages: [{ role: 'user', content: prompt2Content }]
     })
 
     const categories = categorization.content[0].type === 'text' ? categorization.content[0].text : ''
 
-    // Prompt 3: Executive Summary
+    // Prompt 3: Executive Summary — branched by question type
+    const prompt3Content = questionType === 'strategic' ?
+    `You are a PhD Analyst producing a strategic HR synthesis.
+
+    Question: ${question}
+
+    Categorized themes:
+    ${categories}
+
+    Produce a thematic summary per category focused on strategic priorities. Then write a 2-3 paragraph executive synthesis for HR leadership that identifies the top priorities to act on, the key blockers to address, and specific recommended next steps. Stay grounded in the data — no invented insights.`
+
+    : questionType === 'process' ?
+    `You are a PhD Analyst producing a process evaluation HR synthesis.
+
+    Question: ${question}
+
+    Categorized themes:
+    ${categories}
+
+    Produce a thematic summary per category focused on process effectiveness. Then write a 2-3 paragraph executive synthesis for HR leadership that identifies what is working well and should be preserved, what needs immediate improvement, and specific process changes recommended. Stay grounded in the data — no invented insights.`
+
+    : questionType === 'exploration' ?
+    `You are a PhD Analyst producing an exploratory HR synthesis.
+
+    Question: ${question}
+
+    Categorized themes:
+    ${categories}
+
+    Produce a thematic summary per category identifying emerging patterns. Then write a 2-3 paragraph executive synthesis for HR leadership that maps the landscape of themes discovered, highlights the most prominent signals, and suggests areas for deeper investigation. Stay grounded in the data — no invented insights.`
+
+    :
+    `You are a PhD Analyst performing thematic summarization for a sentiment HR question.
+
+    Question: ${question}
+
+    Categorized themes:
+    ${categories}
+
+    Produce a thematic summary per category and a 2-3 paragraph executive synthesis for HR leadership. Stay grounded in the data — no invented insights.`
+
     const summary = await client.messages.create({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 1000,
-      messages: [{
-        role: 'user',
-        content: `You are a PhD Analyst with over 20 years of experience in HR and qualitative analysis, performing thematic summarization.
-
-Question: ${question}
-
-Categorized themes:
-${categories}
-
-Produce a thematic summary per category and a 2-3 paragraph executive synthesis for HR leadership. Stay grounded in the data — no invented insights.`
-      }]
+    model: 'claude-sonnet-4-5',
+    max_tokens: 1000,
+    messages: [{ role: 'user', content: prompt3Content }]
     })
 
     const executiveSummary = summary.content[0].type === 'text' ? summary.content[0].text : ''
-
+    
     const tokenEstimate = responses.length * 150
     const costEstimate = (tokenEstimate * 3 * 0.000015).toFixed(4)
 
