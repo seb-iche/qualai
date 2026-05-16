@@ -346,6 +346,37 @@ export default function Home() {
 
           <div style={{
             marginTop: '80px',
+            width: '100%',
+            maxWidth: '900px',
+          }}>
+            <div className="eyebrow" style={{justifyContent:'flex-start', marginBottom:'20px'}}>How it works</div>
+            
+            <div style={{display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'8px'}}>
+              {[
+                { num: '00', title: 'Question type detection', desc: 'Qualai reads your question and determines what kind of analysis is needed — sentiment, strategic, process, or exploratory.' },
+                { num: '01', title: 'Qualitative coding', desc: 'Every response is coded into 3-5 keywords using only words from the original comment. No invented language, ever.' },
+                { num: '02', title: 'Thematic categorization', desc: 'Codes are grouped into themes and classified by polarity. Every insight traces back to an original comment.' },
+                { num: '03', title: 'Executive synthesis', desc: 'A leadership-ready summary built only from what the data produced. No hallucination. Exportable as PDF.' },
+              ].map((step, i) => (
+                <div key={i} style={{
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  background: 'var(--surface)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
+                }}>
+                  <div style={{fontSize:'11px', fontWeight:500, color:'var(--green)', fontFamily:'DM Mono, monospace'}}>{step.num}</div>
+                  <div style={{fontSize:'12px', color:'var(--text)', fontWeight:400, lineHeight:'1.4'}}>{step.title}</div>
+                  <div style={{fontSize:'11px', color:'var(--muted)', lineHeight:'1.6', fontWeight:300}}>{step.desc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{
+            marginTop: '48px',
             padding: '48px',
             border: '1px solid var(--border)',
             borderRadius: '12px',
@@ -353,6 +384,7 @@ export default function Home() {
             width: '100%',
             textAlign: 'left'
           }}>
+
             <div className="eyebrow" style={{justifyContent:'flex-start', marginBottom:'20px'}}>Why Qualai</div>
             <p style={{fontSize:'13px', color:'var(--muted)', lineHeight:'1.8', fontFamily:'DM Mono, monospace', fontWeight:300, marginBottom:'16px'}}>
               Most HR tools claim anonymity through a privacy policy. Qualai builds it into the methodology — by the time insights reach leadership, individual voices have been dissolved into collective patterns across three analysis stages.
@@ -368,7 +400,7 @@ export default function Home() {
         </main>
 
         <footer>
-          <span>© 2025 Qualai</span>
+          <span>© 2025 Qualai - Sebastian Roa Viertel - LinkedIn: @sebasroavi</span>
           <span>Built for teams of 5–50</span>
         </footer>
       </div>

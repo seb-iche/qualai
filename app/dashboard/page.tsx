@@ -27,27 +27,54 @@ interface Theme {
 const parseThemes = (categories: string): Theme[] => {
   const themes: Theme[] = []
   const categoryBlocks = categories.split(/Category:|##\s+Category:/).filter(b => b.trim())
+  
   categoryBlocks.forEach(block => {
     const lines = block.split('\n').filter(l => l.trim())
     if (!lines.length) return
     const name = lines[0].replace(/[#*]/g, '').trim()
     if (!name || name.length > 60) return
+    
     let pos = 0, neg = 0, neu = 0
-    block.split('\n').forEach(line => {
-      if (/positive/i.test(line)) pos++
-      if (/negative/i.test(line)) neg++
-      if (/neutral/i.test(line)) neu++
-    })
-    const countMatch = block.match(/Positive:\s*(\d+).*Negative:\s*(\d+).*Neutral:\s*(\d+)/i)
-    if (countMatch) {
-      pos = parseInt(countMatch[1])
-      neg = parseInt(countMatch[2])
-      neu = parseInt(countMatch[3])
+
+    // Sentiment format
+    const sentimentMatch = block.match(/Positive:\s*(\d+).*Negative:\s*(\d+).*Neutral:\s*(\d+)/i)
+    // Strategic format
+    const strategicMatch = block.match(/Opportunities:\s*(\d+).*Blockers:\s*(\d+).*Considerations:\s*(\d+)/i)
+    // Process format
+    const processMatch = block.match(/Working Well:\s*(\d+).*Needs Improvement:\s*(\d+).*Unclear:\s*(\d+)/i)
+    // Exploration format
+    const explorationMatch = block.match(/Prominent:\s*(\d+).*Emerging:\s*(\d+).*Peripheral:\s*(\d+)/i)
+
+    if (sentimentMatch) {
+      pos = parseInt(sentimentMatch[1])
+      neg = parseInt(sentimentMatch[2])
+      neu = parseInt(sentimentMatch[3])
+    } else if (strategicMatch) {
+      pos = parseInt(strategicMatch[1])
+      neg = parseInt(strategicMatch[2])
+      neu = parseInt(strategicMatch[3])
+    } else if (processMatch) {
+      pos = parseInt(processMatch[1])
+      neg = parseInt(processMatch[2])
+      neu = parseInt(processMatch[3])
+    } else if (explorationMatch) {
+      pos = parseInt(explorationMatch[1])
+      neg = parseInt(explorationMatch[2])
+      neu = parseInt(explorationMatch[3])
+    } else {
+      // Fallback — count keywords in block
+      block.split('\n').forEach(line => {
+        if (/positive|opportunity|working well|prominent/i.test(line)) pos++
+        if (/negative|blocker|needs improvement|emerging/i.test(line)) neg++
+        if (/neutral|consideration|unclear|peripheral/i.test(line)) neu++
+      })
     }
+
     if (pos + neg + neu > 0) {
       themes.push({ name, positive: pos, negative: neg, neutral: neu, total: pos + neg + neu })
     }
   })
+  
   return themes.sort((a, b) => b.total - a.total)
 }
 
