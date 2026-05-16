@@ -320,19 +320,20 @@ export default function Home() {
         }
         
         @media (max-width: 768px) {
-        nav { padding: 16px 20px; }
-        .logo { font-size: 18px; }
-        .logo img { width: 40px !important; height: 40px !important; }
-        nav div { gap: 12px; }
-        nav a { font-size: 11px; }
-        h1 { font-size: clamp(36px, 10vw, 88px); }
-        main { padding: 40px 20px; }
-        .features { flex-direction: column; gap: 16px; }
-        .feature { max-width: 100%; }
-        .waitlist-btn { width: 100%; text-align: center; padding: 14px 20px; }
-        footer { padding: 16px 20px; font-size: 10px; }
-        .how-it-works-grid { grid-template-columns: repeat(2, 1fr) !important; }
-      }
+          nav { padding: 16px 20px; }
+          .logo { font-size: 18px; }
+          .logo img { width: 40px !important; height: 40px !important; }
+          nav div { gap: 8px; }
+          nav a { font-size: 10px; }
+          h1 { font-size: clamp(36px, 10vw, 88px); }
+          main { padding: 40px 20px; }
+          .features { flex-direction: column; gap: 16px; }
+          .feature { max-width: 100%; }
+          .waitlist-btn { width: 100%; text-align: center; padding: 14px 20px; }
+          footer { padding: 16px 20px; font-size: 10px; }
+          .how-it-works-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .nav-tag { display: none; }
+        }
 
         }
       `}</style>
