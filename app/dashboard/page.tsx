@@ -187,9 +187,29 @@ export default function DashboardPage() {
     doc.setTextColor(...muted)
     doc.text(`Responses analyzed: ${analysis.response_count}`, 20, y)
     y += 5.5
-    doc.text(`Positive codes: ${pos}   |   Negative codes: ${neg}   |   Neutral codes: ${neu}`, 20, y)
+
+    const label1 = analysis.question_type === 'strategic' ? 'Opportunity signals' 
+    : analysis.question_type === 'process' ? 'Working well'
+    : analysis.question_type === 'exploration' ? 'Prominent themes'
+    : 'Positive codes'
+
+    const label2 = analysis.question_type === 'strategic' ? 'Pain points'
+    : analysis.question_type === 'process' ? 'Needs improvement'
+    : analysis.question_type === 'exploration' ? 'Emerging themes'
+    : 'Negative codes'
+
+    const label3 = analysis.question_type === 'strategic' ? 'Considerations'
+    : analysis.question_type === 'process' ? 'Unclear signals'
+    : analysis.question_type === 'exploration' ? 'Peripheral themes'
+    : 'Neutral codes'
+
+    const ratioLabel = analysis.question_type === 'strategic' ? 'Opportunity ratio'
+    : analysis.question_type === 'process' ? 'Satisfaction rate'
+    : 'Positive ratio'
+
+    doc.text(`${label1}: ${pos}   |   ${label2}: ${neg}   |   ${label3}: ${neu}`, 20, y)
     y += 5.5
-    doc.text(`Positive ratio: ${ratio}%   |   Avg codes per response: ${(total / analysis.response_count).toFixed(1)}`, 20, y)
+    doc.text(`${ratioLabel}: ${ratio}%   |   Avg codes per response: ${(total / analysis.response_count).toFixed(1)}`, 20, y)
     y += 5.5
 
     const themes = parseThemes(analysis.categories)
