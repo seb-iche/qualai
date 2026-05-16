@@ -320,11 +320,13 @@ export default function Home() {
         }
         
         @media (max-width: 768px) {
-          nav { padding: 16px 20px; }
-          .logo { font-size: 18px; }
-          .logo img { width: 40px !important; height: 40px !important; }
+          nav { padding: 16px 20px; flex-wrap: nowrap; }
+          .logo { font-size: 16px; }
+          .logo img { width: 36px !important; height: 36px !important; margin-top: 4px !important; }
           nav div { gap: 8px; }
           nav a { font-size: 10px; }
+          .nav-try { display: none; }
+          .nav-tag { display: none; }
           h1 { font-size: clamp(36px, 10vw, 88px); }
           main { padding: 40px 20px; }
           .features { flex-direction: column; gap: 16px; }
@@ -332,10 +334,8 @@ export default function Home() {
           .waitlist-btn { width: 100%; text-align: center; padding: 14px 20px; }
           footer { padding: 16px 20px; font-size: 10px; }
           .how-it-works-grid { grid-template-columns: repeat(2, 1fr) !important; }
-          .nav-tag { display: none; }
         }
 
-        }
       `}</style>
 
       <div className="page">
@@ -348,7 +348,7 @@ export default function Home() {
             <img src="/koala-logo.svg" alt="Qualai" width={60} height={60} style={{display:'block', marginTop:'8px'}} />            Qualai
           </div>
           <div style={{display:'flex', alignItems:'center', gap:'24px'}}>
-          <a href="/analyze" style={{fontSize:'12px', color:'var(--green)', textDecoration:'none', letterSpacing:'0.04em'}}>Try it free</a>
+          <a href="/analyze" className="nav-try" style={{fontSize:'12px', color:'var(--green)', textDecoration:'none', letterSpacing:'0.04em'}}>Try it free</a>
           <a href="/dashboard" style={{fontSize:'12px', color:'var(--muted)', textDecoration:'none', letterSpacing:'0.04em'}}>Dashboard</a>
           <a href="/settings" style={{fontSize:'12px', color:'var(--muted)', textDecoration:'none', letterSpacing:'0.04em'}}>Settings</a>
           
