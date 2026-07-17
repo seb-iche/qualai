@@ -40,7 +40,7 @@ const typeDetection = await client.messages.create({
     ? typeDetection.content[0].text.trim().toLowerCase().split(/\s+/)[0]
     : 'sentiment'
 
-console.log('Prompt 0 raw response:', typeDetection.content[0])
+    //console.log('Prompt 0 raw response:', typeDetection.content[0])
 
   if (!question || !responses || responses.length === 0) {
     return NextResponse.json({ error: 'Missing question or responses' }, { status: 400 })
