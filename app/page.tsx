@@ -2,37 +2,26 @@
 import { Fragment, useEffect, useState } from 'react'
 import { Lock, Microscope, Zap, ArrowRight } from 'lucide-react'
 
-// Deterministic scatter so server and client render identical markup (no
-// hydration mismatch). Seeded PRNG — mulberry32.
-function mulberry32(seed: number) {
-  return function () {
-    seed |= 0
-    seed = (seed + 0x6d2b79f5) | 0
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
+// Hero value-proposition map. The open-text signal is the richest but least-
+// used HR data because analyzing it is both too expensive and too risky;
+// Qualai answers both at once with speed (a 4-stage pipeline) and trust
+// (anonymity + BYOK) — which reinforce each other and unlock the signal.
+type VVariant = 'neutral' | 'problem' | 'solution' | 'final'
+
+function VNode({ cx, cy, variant, title, sub }: {
+  cx: number; cy: number; variant: VVariant; title: string; sub: string
+}) {
+  const tone = variant === 'problem' ? 'problem' : variant === 'neutral' ? 'neutral' : 'solution'
+  return (
+    <g>
+      <rect x={cx - 124} y={cy - 30} width={248} height={60} rx={12} className={`vp-rect-${variant}`} />
+      <text textAnchor="middle">
+        <tspan x={cx} y={cy - 3} className={`vp-title vp-t-${tone}`}>{title}</tspan>
+        <tspan x={cx} y={cy + 16} className="vp-sub">{sub}</tspan>
+      </text>
+    </g>
+  )
 }
-
-const rand = mulberry32(7)
-
-// Scattered individual "voices" on the left.
-const SCATTER = Array.from({ length: 34 }, () => ({
-  x: 24 + rand() * 250,
-  y: 20 + rand() * 160,
-  r: 1.5 + rand() * 1.7,
-  delay: rand() * 4,
-}))
-
-// The unified, structured pattern they converge into on the right.
-const CX = 476
-const CY = 100
-const RING_R = 42
-const RING_N = 10
-const RING = Array.from({ length: RING_N }, (_, i) => {
-  const a = (i / RING_N) * Math.PI * 2 - Math.PI / 2
-  return { x: CX + Math.cos(a) * RING_R, y: CY + Math.sin(a) * RING_R }
-})
 
 const FEATURES = [
   { Icon: Lock, label: 'Architectural anonymity', caption: 'Privacy by methodology, not policy.' },
@@ -83,6 +72,7 @@ export default function Home() {
         --text: #e8e6df;
         --muted: #7a7870;
         --border: rgba(125, 184, 122, 0.15);
+        --red: #d98b6a;
       }
 
       :root.light {
@@ -93,6 +83,7 @@ export default function Home() {
         --text: #1a1a1a;
         --muted: #666666;
         --border: rgba(46, 125, 50, 0.15);
+        --red: #b5533f;
       }
 
         html, body { height: 100%; background: var(--bg); color: var(--text); }
@@ -249,30 +240,28 @@ export default function Home() {
           animation: fadeUp 0.8s 0.15s ease both;
         }
 
-        /* Hero convergence visual — scattered voices → one structured pattern */
-        .converge {
+        /* Hero value-proposition map */
+        .valueprop {
           width: 100%;
-          max-width: 560px;
+          max-width: 600px;
           height: auto;
           display: block;
-          margin: 28px auto 36px;
+          margin: 24px auto 40px;
           animation: fadeUp 0.8s 0.2s ease both;
         }
-        .converge .flow {
-          fill: none;
-          stroke: var(--green-dim);
-          stroke-width: 1;
-          opacity: 0.22;
-          stroke-dasharray: 2 6;
-          animation: flow 4s linear infinite;
-        }
-        .converge .scatter-dot { fill: var(--muted); animation: twinkle 4s ease-in-out infinite; }
-        .converge .ring-ring { fill: none; stroke: var(--green-dim); stroke-width: 1; opacity: 0.5; }
-        .converge .ring-dot { fill: var(--green); }
-        .converge .core { fill: var(--green); }
+        .valueprop .vp-line { fill: none; stroke: var(--muted); stroke-width: 1.4; opacity: 0.5; }
+        .valueprop .vp-arrowhead { fill: var(--muted); opacity: 0.6; }
+        .vp-rect-neutral { fill: var(--surface); stroke: var(--border); stroke-width: 1; }
+        .vp-rect-problem { fill: color-mix(in srgb, var(--red) 12%, transparent); stroke: color-mix(in srgb, var(--red) 48%, transparent); stroke-width: 1; }
+        .vp-rect-solution { fill: color-mix(in srgb, var(--green) 12%, transparent); stroke: color-mix(in srgb, var(--green) 45%, transparent); stroke-width: 1; }
+        .vp-rect-final { fill: color-mix(in srgb, var(--green) 22%, transparent); stroke: var(--green); stroke-width: 1.4; animation: vpPulse 3.4s ease-in-out infinite; }
+        .vp-title { font-family: var(--font-sans), sans-serif; font-weight: 600; font-size: 15px; }
+        .vp-sub { font-family: var(--font-sans), sans-serif; font-weight: 400; font-size: 11px; fill: var(--muted); }
+        .vp-t-neutral { fill: var(--text); }
+        .vp-t-problem { fill: var(--red); }
+        .vp-t-solution { fill: var(--green); }
 
-        @keyframes flow { to { stroke-dashoffset: -80; } }
-        @keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.65; } }
+        @keyframes vpPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.78; } }
 
         .cta-btn {
         display: inline-block;
@@ -417,7 +406,7 @@ export default function Home() {
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .converge .flow, .converge .scatter-dot { animation: none; }
+          .vp-rect-final { animation: none; }
         }
 
         @media (max-width: 600px) {
@@ -487,21 +476,29 @@ export default function Home() {
             Scattered open-text responses become one structured, stakeholder-ready signal.
           </p>
 
-          <svg className="converge" viewBox="0 0 560 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            {/* flow lines: scattered voices stream toward the unified pattern */}
-            {SCATTER.map((d, i) => (
-              <path key={`f${i}`} className="flow" d={`M ${d.x} ${d.y} Q ${(d.x + CX) / 2} ${(d.y + CY) / 2 - 12} ${CX} ${CY}`} />
-            ))}
-            {/* scattered individual marks */}
-            {SCATTER.map((d, i) => (
-              <circle key={`s${i}`} className="scatter-dot" cx={d.x} cy={d.y} r={d.r} style={{ animationDelay: `${d.delay}s` }} />
-            ))}
-            {/* the unified, structured pattern */}
-            <circle className="ring-ring" cx={CX} cy={CY} r={RING_R} />
-            {RING.map((p, i) => (
-              <circle key={`r${i}`} className="ring-dot" cx={p.x} cy={p.y} r={3} />
-            ))}
-            <circle className="core" cx={CX} cy={CY} r={5} />
+          <svg className="valueprop" viewBox="0 0 640 464" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Open-text survey data is the richest but least-used signal because analysis is too expensive and too risky; Qualai answers both with speed and trust to unlock leadership-ready insight.">
+            <defs>
+              <marker id="vp-arrow" markerWidth="9" markerHeight="9" refX="6.5" refY="4.5" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+                <path className="vp-arrowhead" d="M2,2 L7,4.5 L2,7 Z" />
+              </marker>
+            </defs>
+
+            {/* connectors (drawn first so node cards sit on top) */}
+            <path className="vp-line" d="M292 76 L178 140" markerEnd="url(#vp-arrow)" />
+            <path className="vp-line" d="M348 76 L462 140" markerEnd="url(#vp-arrow)" />
+            <path className="vp-line" d="M168 200 L168 262" markerEnd="url(#vp-arrow)" />
+            <path className="vp-line" d="M472 200 L472 262" markerEnd="url(#vp-arrow)" />
+            <path className="vp-line" d="M196 324 L300 386" markerEnd="url(#vp-arrow)" />
+            <path className="vp-line" d="M444 324 L340 386" markerEnd="url(#vp-arrow)" />
+            {/* speed & trust reinforce each other */}
+            <path className="vp-line" d="M296 294 L344 294" markerStart="url(#vp-arrow)" markerEnd="url(#vp-arrow)" />
+
+            <VNode cx={320} cy={46} variant="neutral" title="Open-text survey data" sub="Richest signal, least used" />
+            <VNode cx={168} cy={170} variant="problem" title="Too expensive" sub="Days of manual coding" />
+            <VNode cx={472} cy={170} variant="problem" title="Too risky" sub="No trust guarantees" />
+            <VNode cx={168} cy={294} variant="solution" title="Speed" sub="4-stage AI pipeline" />
+            <VNode cx={472} cy={294} variant="solution" title="Trust" sub="Anonymity + BYOK" />
+            <VNode cx={320} cy={418} variant="final" title="Unlocked signal" sub="Leadership-ready insight" />
           </svg>
 
           <a href="/analyze" className="cta-btn">
