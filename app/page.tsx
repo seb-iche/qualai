@@ -1,5 +1,5 @@
 'use client'
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { Lock, Microscope, Zap, ArrowRight } from 'lucide-react'
 
 // Hero value-proposition map. The open-text signal is the richest but least-
@@ -27,10 +27,8 @@ function VNode({ cx, cy, variant, title, sub }: {
 // through an ASCII pipeline, and organize into a structured geometric shape.
 // This is the product's core motion rendered in the "coded data" voice:
 // unstructured open text becomes coded, structured signal.
-const A_COLS = 15
-const A_ROWS = 22
-const A_CYCLE = 44
-const MESSY = ['@', '#', '%', '&', '?', '*', '/', '\\', '~', '+', '=', '<', '>', '§', '¤', ';']
+const FIELD_CYCLE = 66
+const MESSY = ['@', '#', '%', '&', '?', '*', '/', '\\', '~', '+', '=', '<', '>', '§', '¤', ';', ':', '^', '$']
 
 function ahash(a: number, b: number, c: number) {
   const x = Math.sin(a * 12.9898 + b * 78.233 + c * 37.719) * 43758.5453
@@ -40,79 +38,115 @@ function mchar(a: number, b: number, c: number) {
   return MESSY[Math.floor(ahash(a, b, c) * MESSY.length)]
 }
 
-interface AsciiRow { text: string; tone: 'messy' | 'struct' | 'ordered' }
+interface Field { noise: string; struct: string }
 
-function buildAsciiFrame(f: number): AsciiRow[] {
-  const g: string[][] = Array.from({ length: A_ROWS }, () => Array(A_COLS).fill(' '))
-  const tone: AsciiRow['tone'][] = Array(A_ROWS).fill('messy')
+// Builds two overlaid text layers for the frame: `noise` (messy raw symbols)
+// and `struct` (pipelines + the organized lattice they feed). Rendering two
+// single text nodes keeps a large animated field cheap.
+function buildField(f: number, cols: number, rows: number): Field {
+  const noise: string[] = new Array(rows)
+  const struct: string[] = new Array(rows)
   const churn = Math.floor(f / 2)
+  const prog = (f % FIELD_CYCLE) / FIELD_CYCLE
 
-  // messy input churn (rows 0–5)
-  for (let r = 0; r <= 5; r++) {
-    for (let c = 0; c < A_COLS; c++) {
-      if (ahash(r, c, churn) > 0.66) g[r][c] = mchar(c * 3, r * 7, churn)
+  // Pipeline geometry, biased to the right (the open side, away from the copy).
+  const pipeCols = [0.55, 0.66, 0.77, 0.88]
+    .map(fr => Math.round(fr * cols))
+    .filter(c => c > 1 && c < cols - 1)
+  const pipeTop = Math.max(2, Math.round(rows * 0.16))
+  const merge = Math.round(rows * 0.56)
+  const collector = merge + 1
+  const latTop = merge + 3
+  const latBot = rows - 2
+  const latL = pipeCols.length ? pipeCols[0] : Math.round(cols * 0.55)
+  const latR = pipeCols.length ? pipeCols[pipeCols.length - 1] : cols - 2
+  const revealRows = Math.floor(prog * (latBot - latTop + 2))
+
+  for (let r = 0; r < rows; r++) {
+    const nrow: string[] = new Array(cols)
+    const srow: string[] = new Array(cols)
+    for (let c = 0; c < cols; c++) {
+      let s = ' '
+
+      // funnel lips feeding each pipe
+      if (r === pipeTop - 1) {
+        for (const pc of pipeCols) {
+          if (c === pc - 1) s = '\\'
+          else if (c === pc + 1) s = '/'
+        }
+      }
+      // vertical pipes carrying descending packets
+      if (r >= pipeTop && r <= merge && pipeCols.indexOf(c) >= 0) {
+        s = '║'
+        const k = pipeCols.indexOf(c)
+        const dropSpan = merge - pipeTop + 1
+        const packet = pipeTop + ((f + k * 4) % dropSpan)
+        if (r === packet) {
+          const depth = (r - pipeTop) / dropSpan
+          s = depth < 0.45 ? mchar(r, c, f) : depth < 0.75 ? '▒' : '▓'
+        }
+      }
+      // collector rail into the lattice
+      if (r === collector && c >= latL && c <= latR) {
+        s = pipeCols.indexOf(c) >= 0 ? '╤' : '═'
+      }
+      // organized lattice — builds top→bottom over the cycle, then loops
+      if (r >= latTop && r <= latBot && c >= latL && c <= latR) {
+        const rowIdx = r - latTop
+        if (rowIdx < revealRows && (r + c) % 2 === 0) s = '◆'
+      }
+
+      srow[c] = s
+
+      // messy noise wherever structure isn't — denser left, thinning right
+      let n = ' '
+      if (s === ' ') {
+        const thr = 0.64 + (c / cols) * 0.2
+        if (ahash(r, c, churn) > thr) n = mchar(c * 3, r * 5, churn)
+      }
+      nrow[c] = n
     }
+    noise[r] = nrow.join('')
+    struct[r] = srow.join('')
   }
-
-  // funnel (rows 6–8) — structure narrowing toward the pipe
-  const fun: [number, number, number][] = [[6, 1, 13], [7, 3, 11], [8, 5, 9]]
-  for (const [r, l, rr] of fun) {
-    tone[r] = 'struct'
-    g[r][l] = '\\'
-    g[r][rr] = '/'
-    for (let c = l + 1; c < rr; c++) if (ahash(r, c, churn) > 0.76) g[r][c] = mchar(c, r, churn)
-  }
-
-  // pipe walls (rows 9–13) + outlet (row 14)
-  for (let r = 9; r <= 13; r++) {
-    tone[r] = 'struct'
-    g[r][6] = '│'
-    g[r][8] = '│'
-  }
-  tone[14] = 'struct'
-  g[14][6] = '╲'; g[14][7] = '▼'; g[14][8] = '╱'
-
-  // packets flowing down the center, transforming from messy → shaded as they go
-  const top = 1, bot = 13, span = bot - top + 1
-  for (let k = 0; k < 3; k++) {
-    const pos = top + ((f + k * Math.round(span / 3)) % span)
-    const depth = (pos - top) / span
-    g[pos][7] = depth < 0.4 ? mchar(pos, 7, f) : depth < 0.72 ? '▒' : '▓'
-  }
-
-  // ordered diamond (rows 15–19) — builds over the cycle, then loops
-  const reveal = Math.floor(((f % A_CYCLE) / A_CYCLE) * 6)
-  const diamond: [number, number[]][] = [
-    [15, [7]],
-    [16, [6, 7, 8]],
-    [17, [5, 6, 7, 8, 9]],
-    [18, [6, 7, 8]],
-    [19, [7]],
-  ]
-  diamond.forEach(([r, cols], idx) => {
-    tone[r] = 'ordered'
-    if (idx < reveal) for (const c of cols) g[r][c] = '◆'
-  })
-
-  return g.map((row, i) => ({ text: row.join(''), tone: tone[i] }))
+  return { noise: noise.join('\n'), struct: struct.join('\n') }
 }
 
-function AsciiPipeline() {
-  // Initial (SSR) frame shows the fully-built shape — deterministic, so it
-  // matches on hydration; the client then animates from the start.
-  const [frame, setFrame] = useState(A_CYCLE - 1)
+function AsciiField() {
+  const ref = useRef<HTMLDivElement>(null)
+  const [dims, setDims] = useState({ cols: 96, rows: 34 })
+  // Initial (SSR) frame shows the built lattice — deterministic, so hydration
+  // matches; the client then restarts from 0 and animates the build-up.
+  const [frame, setFrame] = useState(FIELD_CYCLE - 1)
+
   useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    setFrame(0)
-    const id = setInterval(() => setFrame(f => f + 1), 95)
-    return () => clearInterval(id)
+    const el = ref.current
+    if (!el) return
+    const CHAR_W = 9.2
+    const LINE_H = 15
+    const measure = () => {
+      setDims({
+        cols: Math.max(40, Math.floor(el.clientWidth / CHAR_W) + 2),
+        rows: Math.max(18, Math.floor(el.clientHeight / LINE_H) + 1),
+      })
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    let id: ReturnType<typeof setInterval> | undefined
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setFrame(0)
+      id = setInterval(() => setFrame(f => f + 1), 110)
+    }
+    return () => { ro.disconnect(); if (id) clearInterval(id) }
   }, [])
+
+  const { noise, struct } = buildField(frame, dims.cols, dims.rows)
   return (
-    <pre className="ascii-pipe" aria-hidden="true">
-      {buildAsciiFrame(frame).map((r, i) => (
-        <span key={i} className={`ascii-${r.tone}`}>{r.text + '\n'}</span>
-      ))}
-    </pre>
+    <div className="hero-ascii" ref={ref} aria-hidden="true">
+      <pre className="af af-noise">{noise}</pre>
+      <pre className="af af-struct">{struct}</pre>
+    </div>
   )
 }
 
@@ -333,48 +367,55 @@ export default function Home() {
           animation: fadeUp 0.8s 0.15s ease both;
         }
 
-        /* Hero split: 3/4 content + 1/4 warp pipe */
+        /* Hero with a full-bleed animated ASCII pipeline field */
         .hero {
+          position: relative;
           width: 100%;
-          max-width: 1120px;
-          display: grid;
-          grid-template-columns: 3fr 1fr;
-          gap: 48px;
-          align-items: stretch;
+          max-width: 1240px;
+          min-height: 62vh;
+          display: flex;
+          align-items: center;
         }
         .hero-main {
+          position: relative;
+          z-index: 1;
           display: flex;
           flex-direction: column;
           align-items: flex-start;
           justify-content: center;
           text-align: left;
+          max-width: 720px;
+          padding: 40px 0;
         }
         .hero-main .eyebrow { justify-content: flex-start; margin-bottom: 24px; }
-        .hero-main h1 { font-size: clamp(40px, 5.4vw, 76px); text-align: left; }
+        .hero-main h1 { font-size: clamp(40px, 5.6vw, 70px); text-align: left; }
         .hero-main .subhead { margin: 20px 0 0; text-align: left; max-width: 520px; }
         .hero-main .cta-btn { margin-top: 36px; }
 
-        .hero-aside {
-          display: flex;
-          align-items: stretch;
-          justify-content: center;
-          min-height: 380px;
+        /* Full-bleed ASCII field: two overlaid text layers behind the copy */
+        .hero-ascii {
+          position: absolute;
+          inset: 0;
+          z-index: 0;
+          overflow: hidden;
+          pointer-events: none;
+          -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.12) 34%, #000 62%, #000 100%);
+          mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.12) 34%, #000 62%, #000 100%);
         }
-
-        /* ASCII pipeline animation */
-        .ascii-pipe {
-          font-family: var(--font-mono), monospace;
-          font-size: 14px;
-          line-height: 1.2;
-          letter-spacing: 1px;
+        .af {
+          position: absolute;
+          inset: 0;
           margin: 0;
+          font-family: var(--font-mono), monospace;
+          font-size: 12px;
+          line-height: 15px;
+          letter-spacing: 2px;
           white-space: pre;
+          overflow: hidden;
           user-select: none;
-          animation: fadeUp 0.8s 0.25s ease both;
         }
-        .ascii-messy { color: var(--muted); opacity: 0.7; }
-        .ascii-struct { color: var(--green-dim); }
-        .ascii-ordered { color: var(--green); text-shadow: 0 0 8px color-mix(in srgb, var(--green) 55%, transparent); }
+        .af-noise { color: var(--muted); opacity: 0.4; }
+        .af-struct { color: var(--green); opacity: 0.92; text-shadow: 0 0 6px color-mix(in srgb, var(--green) 45%, transparent); }
 
         /* Value-proposition map (own section below the hero) */
         .valueprop-wrap { width: 100%; display: flex; justify-content: center; margin-top: 72px; }
@@ -561,13 +602,13 @@ export default function Home() {
           .nav-tag { display: none; }
           h1 { font-size: clamp(36px, 10vw, 88px); }
           main { padding: 40px 20px; }
-          .hero { grid-template-columns: 1fr; gap: 0; }
-          .hero-main { align-items: center; text-align: center; }
+          .hero { min-height: auto; justify-content: center; }
+          .hero-main { align-items: center; text-align: center; max-width: 100%; padding: 0; }
           .hero-main .eyebrow { justify-content: center; }
           .hero-main h1, .hero-main .subhead { text-align: center; }
           .hero-main .subhead { margin-left: auto; margin-right: auto; }
           .hero-main .cta-btn { align-self: stretch; }
-          .hero-aside { display: none; }
+          .hero-ascii { display: none; }
           .valueprop-wrap { margin-top: 48px; }
           .features { flex-direction: column; gap: 24px; }
           .feature { max-width: 100%; }
@@ -613,6 +654,7 @@ export default function Home() {
 
         <main>
           <div className="hero">
+            <AsciiField />
             <div className="hero-main">
               <div className="eyebrow">Qualitative AI for HR</div>
 
@@ -625,10 +667,6 @@ export default function Home() {
               <a href="/analyze" className="cta-btn">
                 Try it free
               </a>
-            </div>
-
-            <div className="hero-aside">
-              <AsciiPipeline />
             </div>
           </div>
 
