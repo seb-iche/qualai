@@ -1,5 +1,5 @@
 'use client'
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { Lock, Microscope, Zap, ArrowRight } from 'lucide-react'
 
 // Hero value-proposition map. The open-text signal is the richest but least-
@@ -27,126 +27,60 @@ function VNode({ cx, cy, variant, title, sub }: {
 // through an ASCII pipeline, and organize into a structured geometric shape.
 // This is the product's core motion rendered in the "coded data" voice:
 // unstructured open text becomes coded, structured signal.
-const FIELD_CYCLE = 66
-const MESSY = ['@', '#', '%', '&', '?', '*', '/', '\\', '~', '+', '=', '<', '>', '§', '¤', ';', ':', '^', '$']
+// Hero engine diagram — open-text input enters a "black box" that opens to
+// reveal a pipeline routing in different directions (like real pipes) and
+// exits as one structured output.
+const ENG_PATHS = [
+  'M110,140 L205,140 L205,72 L515,72 L515,140 L610,140',   // routes up and over
+  'M110,140 L610,140',                                       // straight through
+  'M110,140 L205,140 L205,208 L515,208 L515,140 L610,140',  // routes down and under
+]
 
-function ahash(a: number, b: number, c: number) {
-  const x = Math.sin(a * 12.9898 + b * 78.233 + c * 37.719) * 43758.5453
-  return x - Math.floor(x)
-}
-function mchar(a: number, b: number, c: number) {
-  return MESSY[Math.floor(ahash(a, b, c) * MESSY.length)]
-}
-
-interface Field { noise: string; struct: string }
-
-// Builds two overlaid text layers for the frame: `noise` (messy raw symbols)
-// and `struct` (pipelines + the organized lattice they feed). Rendering two
-// single text nodes keeps a large animated field cheap.
-function buildField(f: number, cols: number, rows: number): Field {
-  const noise: string[] = new Array(rows)
-  const struct: string[] = new Array(rows)
-  const churn = Math.floor(f / 2)
-  const prog = (f % FIELD_CYCLE) / FIELD_CYCLE
-
-  // Pipeline geometry, biased to the right (the open side, away from the copy).
-  const pipeCols = [0.55, 0.66, 0.77, 0.88]
-    .map(fr => Math.round(fr * cols))
-    .filter(c => c > 1 && c < cols - 1)
-  const pipeTop = Math.max(2, Math.round(rows * 0.16))
-  const merge = Math.round(rows * 0.56)
-  const collector = merge + 1
-  const latTop = merge + 3
-  const latBot = rows - 2
-  const latL = pipeCols.length ? pipeCols[0] : Math.round(cols * 0.55)
-  const latR = pipeCols.length ? pipeCols[pipeCols.length - 1] : cols - 2
-  const revealRows = Math.floor(prog * (latBot - latTop + 2))
-
-  for (let r = 0; r < rows; r++) {
-    const nrow: string[] = new Array(cols)
-    const srow: string[] = new Array(cols)
-    for (let c = 0; c < cols; c++) {
-      let s = ' '
-
-      // funnel lips feeding each pipe
-      if (r === pipeTop - 1) {
-        for (const pc of pipeCols) {
-          if (c === pc - 1) s = '\\'
-          else if (c === pc + 1) s = '/'
-        }
-      }
-      // vertical pipes carrying descending packets
-      if (r >= pipeTop && r <= merge && pipeCols.indexOf(c) >= 0) {
-        s = '║'
-        const k = pipeCols.indexOf(c)
-        const dropSpan = merge - pipeTop + 1
-        const packet = pipeTop + ((f + k * 4) % dropSpan)
-        if (r === packet) {
-          const depth = (r - pipeTop) / dropSpan
-          s = depth < 0.45 ? mchar(r, c, f) : depth < 0.75 ? '▒' : '▓'
-        }
-      }
-      // collector rail into the lattice
-      if (r === collector && c >= latL && c <= latR) {
-        s = pipeCols.indexOf(c) >= 0 ? '╤' : '═'
-      }
-      // organized lattice — builds top→bottom over the cycle, then loops
-      if (r >= latTop && r <= latBot && c >= latL && c <= latR) {
-        const rowIdx = r - latTop
-        if (rowIdx < revealRows && (r + c) % 2 === 0) s = '◆'
-      }
-
-      srow[c] = s
-
-      // messy noise wherever structure isn't — denser left, thinning right
-      let n = ' '
-      if (s === ' ') {
-        const thr = 0.64 + (c / cols) * 0.2
-        if (ahash(r, c, churn) > thr) n = mchar(c * 3, r * 5, churn)
-      }
-      nrow[c] = n
-    }
-    noise[r] = nrow.join('')
-    struct[r] = srow.join('')
-  }
-  return { noise: noise.join('\n'), struct: struct.join('\n') }
-}
-
-function AsciiField() {
-  const ref = useRef<HTMLDivElement>(null)
-  const [dims, setDims] = useState({ cols: 96, rows: 34 })
-  // Initial (SSR) frame shows the built lattice — deterministic, so hydration
-  // matches; the client then restarts from 0 and animates the build-up.
-  const [frame, setFrame] = useState(FIELD_CYCLE - 1)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const CHAR_W = 9.2
-    const LINE_H = 15
-    const measure = () => {
-      setDims({
-        cols: Math.max(40, Math.floor(el.clientWidth / CHAR_W) + 2),
-        rows: Math.max(18, Math.floor(el.clientHeight / LINE_H) + 1),
-      })
-    }
-    measure()
-    const ro = new ResizeObserver(measure)
-    ro.observe(el)
-    let id: ReturnType<typeof setInterval> | undefined
-    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setFrame(0)
-      id = setInterval(() => setFrame(f => f + 1), 110)
-    }
-    return () => { ro.disconnect(); if (id) clearInterval(id) }
-  }, [])
-
-  const { noise, struct } = buildField(frame, dims.cols, dims.rows)
+function EngineDiagram() {
   return (
-    <div className="hero-ascii" ref={ref} aria-hidden="true">
-      <pre className="af af-noise">{noise}</pre>
-      <pre className="af af-struct">{struct}</pre>
-    </div>
+    <svg className="engine" viewBox="0 0 720 280" role="img"
+      aria-label="Open-text responses enter the Qualai pipeline, route through its stages, and exit as one structured insight.">
+      {/* the black box */}
+      <rect className="eng-box" x="175" y="48" width="370" height="184" rx="14" />
+
+      {/* pipes routing through the box, in different directions */}
+      {ENG_PATHS.map((d, i) => (
+        <g key={i}>
+          <path className="eng-pipe" d={d} />
+          <path className="eng-pipe-hi" d={d} />
+        </g>
+      ))}
+
+      {/* data flowing through the pipes */}
+      {ENG_PATHS.map((d, pi) =>
+        [0, 1, 2].map(k => (
+          <circle key={`${pi}-${k}`} className="eng-dot eng-flow" r="3.2"
+            style={{ offsetPath: `path('${d}')`, animationDelay: `${pi * 0.4 + k}s` }} />
+        ))
+      )}
+
+      {/* interior label — revealed once the box opens */}
+      <text className="eng-label eng-label-g" x="360" y="70" textAnchor="middle">PIPELINE</text>
+
+      {/* input: scattered open text */}
+      <circle className="eng-in" cx="58" cy="126" r="2.2" />
+      <circle className="eng-in" cx="46" cy="140" r="2.2" />
+      <circle className="eng-in" cx="58" cy="154" r="2.2" />
+      <text className="eng-label" x="98" y="116" textAnchor="end">OPEN TEXT</text>
+
+      {/* output: one structured signal */}
+      <g>
+        <circle className="eng-out" cx="655" cy="124" r="3" />
+        <circle className="eng-out" cx="641" cy="140" r="3" />
+        <circle className="eng-out" cx="669" cy="140" r="3" />
+        <circle className="eng-out" cx="655" cy="156" r="3" />
+      </g>
+      <text className="eng-label eng-label-g" x="655" y="182" textAnchor="middle">STRUCTURED</text>
+
+      {/* box doors — slide apart on load to reveal the pipeline */}
+      <rect className="eng-door eng-door-l" x="175" y="48" width="190" height="184" rx="14" />
+      <rect className="eng-door eng-door-r" x="355" y="48" width="190" height="184" rx="14" />
+    </svg>
   )
 }
 
@@ -367,55 +301,41 @@ export default function Home() {
           animation: fadeUp 0.8s 0.15s ease both;
         }
 
-        /* Hero with a full-bleed animated ASCII pipeline field */
+        /* Hero: centered copy + engine diagram */
         .hero {
-          position: relative;
           width: 100%;
-          max-width: 1240px;
-          min-height: 62vh;
-          display: flex;
-          align-items: center;
-        }
-        .hero-main {
-          position: relative;
-          z-index: 1;
+          max-width: 900px;
           display: flex;
           flex-direction: column;
-          align-items: flex-start;
-          justify-content: center;
-          text-align: left;
-          max-width: 720px;
-          padding: 40px 0;
+          align-items: center;
+          text-align: center;
         }
-        .hero-main .eyebrow { justify-content: flex-start; margin-bottom: 24px; }
-        .hero-main h1 { font-size: clamp(40px, 5.6vw, 70px); text-align: left; }
-        .hero-main .subhead { margin: 20px 0 0; text-align: left; max-width: 520px; }
-        .hero-main .cta-btn { margin-top: 36px; }
+        .hero .cta-btn { margin-top: 32px; }
 
-        /* Full-bleed ASCII field: two overlaid text layers behind the copy */
-        .hero-ascii {
-          position: absolute;
-          inset: 0;
-          z-index: 0;
-          overflow: hidden;
-          pointer-events: none;
-          -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.12) 34%, #000 62%, #000 100%);
-          mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.12) 34%, #000 62%, #000 100%);
+        /* Input → black box → output engine diagram */
+        .engine {
+          width: 100%;
+          max-width: 860px;
+          height: auto;
+          display: block;
+          margin: 52px auto 0;
+          animation: fadeUp 0.8s 0.2s ease both;
         }
-        .af {
-          position: absolute;
-          inset: 0;
-          margin: 0;
-          font-family: var(--font-mono), monospace;
-          font-size: 12px;
-          line-height: 15px;
-          letter-spacing: 2px;
-          white-space: pre;
-          overflow: hidden;
-          user-select: none;
-        }
-        .af-noise { color: var(--muted); opacity: 0.4; }
-        .af-struct { color: var(--green); opacity: 0.92; text-shadow: 0 0 6px color-mix(in srgb, var(--green) 45%, transparent); }
+        .eng-box { fill: rgba(8,12,9,0.9); stroke: var(--green-dim); stroke-width: 1.2; }
+        .eng-pipe { fill: none; stroke: var(--green-dim); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
+        .eng-pipe-hi { fill: none; stroke: var(--green); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; opacity: 0.4; }
+        .eng-dot { fill: #e4ffdb; filter: drop-shadow(0 0 4px var(--green)); }
+        .eng-out { fill: var(--green); filter: drop-shadow(0 0 5px var(--green)); }
+        .eng-in { fill: var(--muted); }
+        .eng-label { font-family: var(--font-mono), monospace; font-size: 11px; letter-spacing: 0.12em; fill: var(--muted); }
+        .eng-label-g { fill: var(--green); }
+        .eng-door { fill: rgba(10,14,10,0.98); stroke: var(--green-dim); stroke-width: 1; }
+        .eng-flow { offset-rotate: 0deg; animation: engFlow 3s linear infinite; }
+        .eng-door-l { animation: engDoorL 0.9s 0.5s ease both; }
+        .eng-door-r { animation: engDoorR 0.9s 0.5s ease both; }
+        @keyframes engFlow { from { offset-distance: 0%; } to { offset-distance: 100%; } }
+        @keyframes engDoorL { to { transform: translateX(-26px); opacity: 0; } }
+        @keyframes engDoorR { to { transform: translateX(26px); opacity: 0; } }
 
         /* Value-proposition map (own section below the hero) */
         .valueprop-wrap { width: 100%; display: flex; justify-content: center; margin-top: 72px; }
@@ -584,6 +504,8 @@ export default function Home() {
 
         @media (prefers-reduced-motion: reduce) {
           .vp-rect-final { animation: none; }
+          .eng-flow { animation: none; }
+          .eng-door-l, .eng-door-r { animation: none; opacity: 0; }
         }
 
         @media (max-width: 600px) {
@@ -602,13 +524,8 @@ export default function Home() {
           .nav-tag { display: none; }
           h1 { font-size: clamp(36px, 10vw, 88px); }
           main { padding: 40px 20px; }
-          .hero { min-height: auto; justify-content: center; }
-          .hero-main { align-items: center; text-align: center; max-width: 100%; padding: 0; }
-          .hero-main .eyebrow { justify-content: center; }
-          .hero-main h1, .hero-main .subhead { text-align: center; }
-          .hero-main .subhead { margin-left: auto; margin-right: auto; }
-          .hero-main .cta-btn { align-self: stretch; }
-          .hero-ascii { display: none; }
+          .hero .cta-btn { align-self: stretch; }
+          .engine { margin-top: 36px; }
           .valueprop-wrap { margin-top: 48px; }
           .features { flex-direction: column; gap: 24px; }
           .feature { max-width: 100%; }
@@ -654,20 +571,19 @@ export default function Home() {
 
         <main>
           <div className="hero">
-            <AsciiField />
-            <div className="hero-main">
-              <div className="eyebrow">Qualitative AI for HR</div>
+            <div className="eyebrow">Qualitative AI for HR</div>
 
-              <h1>Understand what<br />your team <em>really</em> feels</h1>
+            <h1>Understand what<br />your team <em>really</em> feels</h1>
 
-              <p className="subhead">
-                Scattered open-text responses become one structured, stakeholder-ready signal.
-              </p>
+            <p className="subhead">
+              Scattered open-text responses become one structured, stakeholder-ready signal.
+            </p>
 
-              <a href="/analyze" className="cta-btn">
-                Try it free
-              </a>
-            </div>
+            <a href="/analyze" className="cta-btn">
+              Try it free
+            </a>
+
+            <EngineDiagram />
           </div>
 
           <div className="valueprop-wrap">
