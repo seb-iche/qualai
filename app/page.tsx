@@ -23,15 +23,98 @@ function VNode({ cx, cy, variant, title, sub }: {
   )
 }
 
-// Marks flowing down the hero "warp pipe" — staggered across the loop.
-const PIPE_DOTS = [
-  { delay: 0.0, x: 0 },
-  { delay: 0.55, x: -6 },
-  { delay: 1.1, x: 5 },
-  { delay: 1.65, x: -3 },
-  { delay: 2.2, x: 6 },
-  { delay: 2.75, x: -5 },
-]
+// ASCII pipeline animation — raw messy symbols pour in at the top, flow down
+// through an ASCII pipeline, and organize into a structured geometric shape.
+// This is the product's core motion rendered in the "coded data" voice:
+// unstructured open text becomes coded, structured signal.
+const A_COLS = 15
+const A_ROWS = 22
+const A_CYCLE = 44
+const MESSY = ['@', '#', '%', '&', '?', '*', '/', '\\', '~', '+', '=', '<', '>', '§', '¤', ';']
+
+function ahash(a: number, b: number, c: number) {
+  const x = Math.sin(a * 12.9898 + b * 78.233 + c * 37.719) * 43758.5453
+  return x - Math.floor(x)
+}
+function mchar(a: number, b: number, c: number) {
+  return MESSY[Math.floor(ahash(a, b, c) * MESSY.length)]
+}
+
+interface AsciiRow { text: string; tone: 'messy' | 'struct' | 'ordered' }
+
+function buildAsciiFrame(f: number): AsciiRow[] {
+  const g: string[][] = Array.from({ length: A_ROWS }, () => Array(A_COLS).fill(' '))
+  const tone: AsciiRow['tone'][] = Array(A_ROWS).fill('messy')
+  const churn = Math.floor(f / 2)
+
+  // messy input churn (rows 0–5)
+  for (let r = 0; r <= 5; r++) {
+    for (let c = 0; c < A_COLS; c++) {
+      if (ahash(r, c, churn) > 0.66) g[r][c] = mchar(c * 3, r * 7, churn)
+    }
+  }
+
+  // funnel (rows 6–8) — structure narrowing toward the pipe
+  const fun: [number, number, number][] = [[6, 1, 13], [7, 3, 11], [8, 5, 9]]
+  for (const [r, l, rr] of fun) {
+    tone[r] = 'struct'
+    g[r][l] = '\\'
+    g[r][rr] = '/'
+    for (let c = l + 1; c < rr; c++) if (ahash(r, c, churn) > 0.76) g[r][c] = mchar(c, r, churn)
+  }
+
+  // pipe walls (rows 9–13) + outlet (row 14)
+  for (let r = 9; r <= 13; r++) {
+    tone[r] = 'struct'
+    g[r][6] = '│'
+    g[r][8] = '│'
+  }
+  tone[14] = 'struct'
+  g[14][6] = '╲'; g[14][7] = '▼'; g[14][8] = '╱'
+
+  // packets flowing down the center, transforming from messy → shaded as they go
+  const top = 1, bot = 13, span = bot - top + 1
+  for (let k = 0; k < 3; k++) {
+    const pos = top + ((f + k * Math.round(span / 3)) % span)
+    const depth = (pos - top) / span
+    g[pos][7] = depth < 0.4 ? mchar(pos, 7, f) : depth < 0.72 ? '▒' : '▓'
+  }
+
+  // ordered diamond (rows 15–19) — builds over the cycle, then loops
+  const reveal = Math.floor(((f % A_CYCLE) / A_CYCLE) * 6)
+  const diamond: [number, number[]][] = [
+    [15, [7]],
+    [16, [6, 7, 8]],
+    [17, [5, 6, 7, 8, 9]],
+    [18, [6, 7, 8]],
+    [19, [7]],
+  ]
+  diamond.forEach(([r, cols], idx) => {
+    tone[r] = 'ordered'
+    if (idx < reveal) for (const c of cols) g[r][c] = '◆'
+  })
+
+  return g.map((row, i) => ({ text: row.join(''), tone: tone[i] }))
+}
+
+function AsciiPipeline() {
+  // Initial (SSR) frame shows the fully-built shape — deterministic, so it
+  // matches on hydration; the client then animates from the start.
+  const [frame, setFrame] = useState(A_CYCLE - 1)
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    setFrame(0)
+    const id = setInterval(() => setFrame(f => f + 1), 95)
+    return () => clearInterval(id)
+  }, [])
+  return (
+    <pre className="ascii-pipe" aria-hidden="true">
+      {buildAsciiFrame(frame).map((r, i) => (
+        <span key={i} className={`ascii-${r.tone}`}>{r.text + '\n'}</span>
+      ))}
+    </pre>
+  )
+}
 
 const FEATURES = [
   { Icon: Lock, label: 'Architectural anonymity', caption: 'Privacy by methodology, not policy.' },
@@ -278,62 +361,20 @@ export default function Home() {
           min-height: 380px;
         }
 
-        /* Warp pipe */
-        .mpipe {
-          position: relative;
-          width: 92px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
+        /* ASCII pipeline animation */
+        .ascii-pipe {
+          font-family: var(--font-mono), monospace;
+          font-size: 14px;
+          line-height: 1.2;
+          letter-spacing: 1px;
+          margin: 0;
+          white-space: pre;
+          user-select: none;
           animation: fadeUp 0.8s 0.25s ease both;
         }
-        .mpipe-rim {
-          width: 122px;
-          height: 34px;
-          border-radius: 11px;
-          background: linear-gradient(90deg, #365c34 0%, #7dc079 20%, #b7e3b2 34%, #7db87a 62%, #2f5330 100%);
-          border: 2px solid #223d1f;
-          box-shadow: 0 5px 14px rgba(0,0,0,0.32);
-          z-index: 2;
-        }
-        .mpipe-body {
-          position: relative;
-          width: 92px;
-          flex: 1;
-          margin-top: -2px;
-          overflow: hidden;
-          background: linear-gradient(90deg, #365c34 0%, #7dc079 20%, #b7e3b2 34%, #7db87a 62%, #2f5330 100%);
-          border-left: 2px solid #223d1f;
-          border-right: 2px solid #223d1f;
-          -webkit-mask-image: linear-gradient(to bottom, #000 76%, transparent 100%);
-          mask-image: linear-gradient(to bottom, #000 76%, transparent 100%);
-        }
-        /* dark opening so marks read as emerging from the pipe */
-        .mpipe-body::before {
-          content: '';
-          position: absolute;
-          top: 0; left: 0; right: 0;
-          height: 26px;
-          background: linear-gradient(to bottom, rgba(0,0,0,0.4), transparent);
-          z-index: 1;
-        }
-        .mpipe-dot {
-          position: absolute;
-          top: -12%;
-          width: 11px;
-          height: 11px;
-          border-radius: 50%;
-          transform: translateX(-50%);
-          background: radial-gradient(circle at 35% 30%, #ffffff, #d7efd3 55%, #9bd196);
-          box-shadow: 0 0 8px rgba(200,255,200,0.55);
-          animation: pipeFlow 3.3s linear infinite;
-        }
-        @keyframes pipeFlow {
-          0%   { top: -12%; opacity: 0; }
-          10%  { opacity: 1; }
-          86%  { opacity: 1; }
-          100% { top: 108%; opacity: 0; }
-        }
+        .ascii-messy { color: var(--muted); opacity: 0.7; }
+        .ascii-struct { color: var(--green-dim); }
+        .ascii-ordered { color: var(--green); text-shadow: 0 0 8px color-mix(in srgb, var(--green) 55%, transparent); }
 
         /* Value-proposition map (own section below the hero) */
         .valueprop-wrap { width: 100%; display: flex; justify-content: center; margin-top: 72px; }
@@ -502,7 +543,6 @@ export default function Home() {
 
         @media (prefers-reduced-motion: reduce) {
           .vp-rect-final { animation: none; }
-          .mpipe-dot { animation: none; }
         }
 
         @media (max-width: 600px) {
@@ -587,19 +627,8 @@ export default function Home() {
               </a>
             </div>
 
-            <div className="hero-aside" aria-hidden="true">
-              <div className="mpipe">
-                <div className="mpipe-rim" />
-                <div className="mpipe-body">
-                  {PIPE_DOTS.map((d, i) => (
-                    <span
-                      key={i}
-                      className="mpipe-dot"
-                      style={{ left: `calc(50% + ${d.x}px)`, animationDelay: `${d.delay}s` }}
-                    />
-                  ))}
-                </div>
-              </div>
+            <div className="hero-aside">
+              <AsciiPipeline />
             </div>
           </div>
 
