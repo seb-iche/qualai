@@ -1,5 +1,5 @@
 'use client'
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { Lock, Microscope, Zap, ArrowRight } from 'lucide-react'
 
 // Hero value-proposition map. The open-text signal is the richest but least-
@@ -37,8 +37,57 @@ const ENG_PATHS = [
 ]
 
 function EngineDiagram() {
+  const svgRef = useRef<SVGSVGElement>(null)
+
+  useEffect(() => {
+    const svg = svgRef.current
+    if (!svg) return
+    const dots = Array.from(svg.querySelectorAll<SVGCircleElement>('.eng-flow'))
+
+    // Open the box when the diagram scrolls into view.
+    const io = new IntersectionObserver(
+      entries => entries.forEach(e => { if (e.isIntersecting) svg.classList.add('open') }),
+      { threshold: 0.35 }
+    )
+    io.observe(svg)
+
+    const setDot = (d: SVGCircleElement, dist: number) =>
+      d.style.setProperty('offset-distance', `${(dist * 100).toFixed(2)}%`)
+
+    // Reduced motion: place packets statically, don't tie them to scroll.
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      dots.forEach(d => setDot(d, parseFloat(d.dataset.phase || '0')))
+      return () => io.disconnect()
+    }
+
+    // Otherwise the packets advance along the pipes as the page is scrolled —
+    // forward on scroll down, backward on scroll up.
+    const SPEED = 2.4
+    let raf = 0
+    const update = () => {
+      raf = 0
+      const rect = svg.getBoundingClientRect()
+      const vh = window.innerHeight || 1
+      const p = Math.max(0, Math.min(1, (vh - rect.top) / (vh + rect.height)))
+      for (const d of dots) {
+        const phase = parseFloat(d.dataset.phase || '0')
+        setDot(d, (((p * SPEED + phase) % 1) + 1) % 1)
+      }
+    }
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(update) }
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    return () => {
+      io.disconnect()
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [])
+
   return (
-    <svg className="engine" viewBox="0 0 720 280" role="img"
+    <svg ref={svgRef} className="engine" viewBox="0 0 720 280" role="img"
       aria-label="Open-text responses enter the Qualai pipeline, route through its stages, and exit as one structured insight.">
       {/* the black box */}
       <rect className="eng-box" x="175" y="48" width="370" height="184" rx="14" />
@@ -51,11 +100,12 @@ function EngineDiagram() {
         </g>
       ))}
 
-      {/* data flowing through the pipes */}
+      {/* data packets — position driven by scroll (see effect above) */}
       {ENG_PATHS.map((d, pi) =>
         [0, 1, 2].map(k => (
           <circle key={`${pi}-${k}`} className="eng-dot eng-flow" r="3.2"
-            style={{ offsetPath: `path('${d}')`, animationDelay: `${pi * 0.4 + k}s` }} />
+            data-phase={(k / 3 + pi * 0.11).toFixed(3)}
+            style={{ offsetPath: `path('${d}')` }} />
         ))
       )}
 
@@ -318,7 +368,7 @@ export default function Home() {
           max-width: 860px;
           height: auto;
           display: block;
-          margin: 52px auto 0;
+          margin: 72px auto 0;
           animation: fadeUp 0.8s 0.2s ease both;
         }
         .eng-box { fill: rgba(8,12,9,0.9); stroke: var(--green-dim); stroke-width: 1.2; }
@@ -330,10 +380,9 @@ export default function Home() {
         .eng-label { font-family: var(--font-mono), monospace; font-size: 11px; letter-spacing: 0.12em; fill: var(--muted); }
         .eng-label-g { fill: var(--green); }
         .eng-door { fill: rgba(10,14,10,0.98); stroke: var(--green-dim); stroke-width: 1; }
-        .eng-flow { offset-rotate: 0deg; animation: engFlow 3s linear infinite; }
-        .eng-door-l { animation: engDoorL 0.9s 0.5s ease both; }
-        .eng-door-r { animation: engDoorR 0.9s 0.5s ease both; }
-        @keyframes engFlow { from { offset-distance: 0%; } to { offset-distance: 100%; } }
+        .eng-flow { offset-rotate: 0deg; }
+        .engine.open .eng-door-l { animation: engDoorL 0.9s ease both; }
+        .engine.open .eng-door-r { animation: engDoorR 0.9s ease both; }
         @keyframes engDoorL { to { transform: translateX(-26px); opacity: 0; } }
         @keyframes engDoorR { to { transform: translateX(26px); opacity: 0; } }
 
@@ -504,8 +553,7 @@ export default function Home() {
 
         @media (prefers-reduced-motion: reduce) {
           .vp-rect-final { animation: none; }
-          .eng-flow { animation: none; }
-          .eng-door-l, .eng-door-r { animation: none; opacity: 0; }
+          .engine.open .eng-door-l, .engine.open .eng-door-r { animation: none; opacity: 0; }
         }
 
         @media (max-width: 600px) {
@@ -582,8 +630,6 @@ export default function Home() {
             <a href="/analyze" className="cta-btn">
               Try it free
             </a>
-
-            <EngineDiagram />
           </div>
 
           <div className="valueprop-wrap">
@@ -649,6 +695,8 @@ export default function Home() {
               ))}
             </div>
           </div>
+
+          <EngineDiagram />
 
           <div style={{
             marginTop: '48px',
