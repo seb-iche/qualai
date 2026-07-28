@@ -189,55 +189,7 @@ export default function Home() {
           animation: fadeUp 0.8s 0.15s ease both;
         }
 
-        .waitlist {
-          display: flex;
-          gap: 0;
-          max-width: 400px;
-          width: 100%;
-          border: 1px solid var(--border);
-          border-radius: 8px;
-          overflow: hidden;
-          background: var(--surface);
-          animation: fadeUp 0.8s 0.3s ease both;
-          transition: border-color 0.2s;
-        }
-
-        .waitlist:focus-within {
-          border-color: var(--green-dim);
-        }
-
-        .waitlist input {
-          flex: 1;
-          background: transparent;
-          border: none;
-          outline: none;
-          padding: 14px 18px;
-          font-family: 'DM Mono', monospace;
-          font-size: 13px;
-          color: var(--text);
-          font-weight: 300;
-        }
-
-        .waitlist input::placeholder { color: var(--muted); }
-
-        .waitlist button {
-          background: var(--green);
-          border: none;
-          padding: 14px 20px;
-          font-family: 'DM Mono', monospace;
-          font-size: 12px;
-          font-weight: 400;
-          color: #0e0f0d;
-          cursor: pointer;
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
-          transition: background 0.2s;
-          white-space: nowrap;
-        }
-
-        .waitlist button:hover { background: #8ec98b; }
-
-        .waitlist-btn {
+        .cta-btn {
         display: inline-block;
         background: var(--green);
         color: #0e0f0d;
@@ -253,7 +205,7 @@ export default function Home() {
         animation: fadeUp 0.8s 0.3s ease both;
         }
 
-      .waitlist-btn:hover { background: #8ec98b; }
+      .cta-btn:hover { background: #8ec98b; }
 
         .features {
           display: flex;
@@ -331,7 +283,7 @@ export default function Home() {
           main { padding: 40px 20px; }
           .features { flex-direction: column; gap: 16px; }
           .feature { max-width: 100%; }
-          .waitlist-btn { width: 100%; text-align: center; padding: 14px 20px; }
+          .cta-btn { width: 100%; text-align: center; padding: 14px 20px; }
           footer { padding: 16px 20px; font-size: 10px; }
           .how-it-works-grid { grid-template-columns: repeat(2, 1fr) !important; }
         }
@@ -379,13 +331,8 @@ export default function Home() {
             Qualitative responses take significant time and expertise to analyze. Most surveys aren't truly anonymous — so employees hold back. And the tools that exist are built for enterprises, not small teams. Qualai changes that.
           </p>
 
-          <a
-          href="https://tally.so/r/0Qo910"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="waitlist-btn"
-          >
-            Join the waitlist
+          <a href="/analyze" className="cta-btn">
+            Try it free
           </a>
 
           <div className="features">
