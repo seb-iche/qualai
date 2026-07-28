@@ -632,33 +632,6 @@ export default function Home() {
             </a>
           </div>
 
-          <div className="valueprop-wrap">
-          <svg className="valueprop" viewBox="0 0 640 464" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Open-text survey data is the richest but least-used signal because analysis is too expensive and too risky; Qualai answers both with speed and trust to unlock leadership-ready insight.">
-            <defs>
-              <marker id="vp-arrow" markerWidth="9" markerHeight="9" refX="6.5" refY="4.5" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
-                <path className="vp-arrowhead" d="M2,2 L7,4.5 L2,7 Z" />
-              </marker>
-            </defs>
-
-            {/* connectors (drawn first so node cards sit on top) */}
-            <path className="vp-line" d="M292 76 L178 140" markerEnd="url(#vp-arrow)" />
-            <path className="vp-line" d="M348 76 L462 140" markerEnd="url(#vp-arrow)" />
-            <path className="vp-line" d="M168 200 L168 262" markerEnd="url(#vp-arrow)" />
-            <path className="vp-line" d="M472 200 L472 262" markerEnd="url(#vp-arrow)" />
-            <path className="vp-line" d="M196 324 L300 386" markerEnd="url(#vp-arrow)" />
-            <path className="vp-line" d="M444 324 L340 386" markerEnd="url(#vp-arrow)" />
-            {/* speed & trust reinforce each other */}
-            <path className="vp-line" d="M296 294 L344 294" markerStart="url(#vp-arrow)" markerEnd="url(#vp-arrow)" />
-
-            <VNode cx={320} cy={46} variant="neutral" title="Open-text survey data" sub="Richest signal, least used" />
-            <VNode cx={168} cy={170} variant="problem" title="Too expensive" sub="Days of manual coding" />
-            <VNode cx={472} cy={170} variant="problem" title="Too risky" sub="No trust guarantees" />
-            <VNode cx={168} cy={294} variant="solution" title="Speed" sub="4-stage AI pipeline" />
-            <VNode cx={472} cy={294} variant="solution" title="Trust" sub="Anonymity + BYOK" />
-            <VNode cx={320} cy={418} variant="final" title="Unlocked signal" sub="Leadership-ready insight" />
-          </svg>
-          </div>
-
           <div className="features">
             {FEATURES.map(({ Icon, label, caption }) => (
               <div className="feature" key={label}>
@@ -697,6 +670,33 @@ export default function Home() {
           </div>
 
           <EngineDiagram />
+
+          <div className="valueprop-wrap">
+          <svg className="valueprop" viewBox="0 0 640 464" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Open-text survey data is the richest but least-used signal because analysis is too expensive and too risky; Qualai answers both with speed and trust to unlock leadership-ready insight.">
+            <defs>
+              <marker id="vp-arrow" markerWidth="9" markerHeight="9" refX="6.5" refY="4.5" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+                <path className="vp-arrowhead" d="M2,2 L7,4.5 L2,7 Z" />
+              </marker>
+            </defs>
+
+            {/* connectors (drawn first so node cards sit on top) */}
+            <path className="vp-line" d="M292 76 L178 140" markerEnd="url(#vp-arrow)" />
+            <path className="vp-line" d="M348 76 L462 140" markerEnd="url(#vp-arrow)" />
+            <path className="vp-line" d="M168 200 L168 262" markerEnd="url(#vp-arrow)" />
+            <path className="vp-line" d="M472 200 L472 262" markerEnd="url(#vp-arrow)" />
+            <path className="vp-line" d="M196 324 L300 386" markerEnd="url(#vp-arrow)" />
+            <path className="vp-line" d="M444 324 L340 386" markerEnd="url(#vp-arrow)" />
+            {/* speed & trust reinforce each other */}
+            <path className="vp-line" d="M296 294 L344 294" markerStart="url(#vp-arrow)" markerEnd="url(#vp-arrow)" />
+
+            <VNode cx={320} cy={46} variant="neutral" title="Open-text survey data" sub="Richest signal, least used" />
+            <VNode cx={168} cy={170} variant="problem" title="Too expensive" sub="Days of manual coding" />
+            <VNode cx={472} cy={170} variant="problem" title="Too risky" sub="No trust guarantees" />
+            <VNode cx={168} cy={294} variant="solution" title="Speed" sub="4-stage AI pipeline" />
+            <VNode cx={472} cy={294} variant="solution" title="Trust" sub="Anonymity + BYOK" />
+            <VNode cx={320} cy={418} variant="final" title="Unlocked signal" sub="Leadership-ready insight" />
+          </svg>
+          </div>
 
           <div style={{
             marginTop: '48px',
