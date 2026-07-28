@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 interface StageState {
   status: 'idle' | 'processing' | 'done'
@@ -17,6 +17,16 @@ interface PipelineState {
 
 const defaultStage: StageState = { status: 'idle', input: '', output: '' }
 
+type InputMode = 'paste' | 'upload'
+
+// A column reads as free-text responses if most of its values are long or
+// multi-word — as opposed to IDs, dates, or single-token categorical values.
+const looksLikeText = (values: string[]): boolean => {
+  if (values.length === 0) return false
+  const texty = values.filter(v => v.trim().includes(' ') || v.trim().length > 20).length
+  return texty / values.length >= 0.5
+}
+
 export default function AnalyzePage() {
   const [question, setQuestion] = useState('')
   const [responses, setResponses] = useState('')
@@ -30,8 +40,93 @@ export default function AnalyzePage() {
   })
   const [done, setDone] = useState(false)
 
+  // Input method — paste and upload coexist as equal options.
+  const [inputMode, setInputMode] = useState<InputMode>('paste')
+  const [fileName, setFileName] = useState('')
+  const [columns, setColumns] = useState<string[]>([])
+  const [rows, setRows] = useState<string[][]>([])
+  const [selectedCol, setSelectedCol] = useState<number>(-1)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   const updateStage = (stage: keyof PipelineState, updates: Partial<StageState>) => {
     setPipeline(prev => ({ ...prev, [stage]: { ...prev[stage], ...updates } }))
+  }
+
+  // Responses extracted from the chosen spreadsheet column.
+  const extractedResponses =
+    selectedCol >= 0
+      ? rows.map(r => (r[selectedCol] ?? '').trim()).filter(v => v.length > 0)
+      : []
+
+  const resetUpload = () => {
+    setFileName('')
+    setColumns([])
+    setRows([])
+    setSelectedCol(-1)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleFile = async (file: File) => {
+    setError('')
+    resetUpload()
+
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase()
+      let table: string[][] = []
+
+      if (ext === 'csv') {
+        const Papa = (await import('papaparse')).default
+        const text = await file.text()
+        const parsed = Papa.parse<string[]>(text, { skipEmptyLines: true })
+        table = (parsed.data as string[][]).map(row => row.map(c => (c ?? '').toString()))
+      } else if (ext === 'xlsx') {
+        const XLSX = await import('xlsx')
+        const buf = await file.arrayBuffer()
+        const wb = XLSX.read(buf, { type: 'array' })
+        const ws = wb.Sheets[wb.SheetNames[0]]
+        const json = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1, blankrows: false, defval: '' })
+        table = json.map(row => (row as any[]).map(c => (c ?? '').toString()))
+      } else {
+        setError('Unsupported file type. Please upload a .csv or .xlsx file.')
+        return
+      }
+
+      table = table.filter(row => row.some(c => c.trim().length > 0))
+      if (table.length === 0) {
+        setError('That file appears to be empty.')
+        return
+      }
+
+      const colCount = Math.max(...table.map(r => r.length))
+      const header = table[0]
+      const dataRows = table.slice(1).map(r => {
+        const padded = [...r]
+        while (padded.length < colCount) padded.push('')
+        return padded
+      })
+
+      // Column labels: use the header row, falling back to "Column N".
+      const headerLabels = Array.from({ length: colCount }, (_, i) =>
+        (header[i] ?? '').trim() || `Column ${i + 1}`
+      )
+
+      setFileName(file.name)
+      setColumns(headerLabels)
+      setRows(dataRows)
+
+      // Auto-pick when there's only one column, or exactly one plausible text
+      // column; otherwise defer to the column picker.
+      if (colCount === 1) {
+        setSelectedCol(0)
+      } else {
+        const plausible = Array.from({ length: colCount }, (_, i) => i).filter(i =>
+          looksLikeText(dataRows.map(r => r[i] ?? ''))
+        )
+        if (plausible.length === 1) setSelectedCol(plausible[0])
+      }
+    } catch (err: any) {
+      setError('Could not read that file. Please check it and try again.')
+    }
   }
 
   const handleAnalyze = async () => {
@@ -40,10 +135,17 @@ export default function AnalyzePage() {
     setDone(false)
     setPipeline({ stage0: defaultStage, stage1: defaultStage, stage2: defaultStage, stage3: defaultStage })
 
-    const responseList = responses.split('\n').map(r => r.trim()).filter(r => r.length > 0)
+    const responseList =
+      inputMode === 'upload'
+        ? extractedResponses
+        : responses.split('\n').map(r => r.trim()).filter(r => r.length > 0)
 
     if (!question || responseList.length === 0) {
-      setError('Please enter a question and at least one response.')
+      setError(
+        inputMode === 'upload'
+          ? 'Please enter a question and choose a column with responses.'
+          : 'Please enter a question and at least one response.'
+      )
       setLoading(false)
       return
     }
@@ -130,7 +232,29 @@ export default function AnalyzePage() {
         .run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         textarea { scrollbar-width: none; -ms-overflow-style: none; }
         textarea::-webkit-scrollbar { display: none; }
-        .error { color: var(--red); font-size: 13px; margin-top: 12px; }
+        .error { font-family: var(--font-sans), sans-serif; color: var(--red); font-size: 13px; margin-top: 12px; }
+
+        .input-tabs { display: flex; gap: 4px; margin-bottom: 12px; }
+        .input-tab { font-family: var(--font-sans), sans-serif; font-weight: 500; font-size: 12px; color: var(--muted); background: transparent; border: 1px solid var(--border); border-radius: 8px; padding: 8px 16px; cursor: pointer; transition: all 0.15s; }
+        .input-tab:hover { color: var(--text); border-color: var(--green-dim); }
+        .input-tab.active { color: var(--green); border-color: var(--green); background: rgba(125,184,122,0.06); }
+
+        .dropzone { border: 1px dashed var(--green-dim); border-radius: 8px; background: var(--surface); padding: 32px 16px; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+        .dropzone:hover { border-color: var(--green); background: rgba(125,184,122,0.04); }
+        .dropzone-prompt { display: flex; flex-direction: column; gap: 4px; }
+        .dropzone-title { font-family: var(--font-sans), sans-serif; font-weight: 500; font-size: 13px; color: var(--text); }
+        .dropzone-sub { font-family: var(--font-sans), sans-serif; font-size: 12px; color: var(--muted); }
+        .dropzone-file { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+        .dropzone-filename { font-family: var(--font-mono), monospace; font-size: 13px; color: var(--green); }
+        .dropzone-clear { font-family: var(--font-sans), sans-serif; font-size: 11px; color: var(--muted); background: transparent; border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; cursor: pointer; transition: all 0.15s; }
+        .dropzone-clear:hover { color: var(--red); border-color: var(--red); }
+
+        .col-picker { margin-top: 16px; }
+        .col-picker-label { font-family: var(--font-sans), sans-serif; font-weight: 500; font-size: 12px; color: var(--text); margin-bottom: 10px; }
+        .col-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+        .col-chip { font-family: var(--font-mono), monospace; font-size: 12px; color: var(--muted); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 8px 14px; cursor: pointer; transition: all 0.15s; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .col-chip:hover { color: var(--text); border-color: var(--green-dim); }
+        .col-chip.active { color: var(--green); border-color: var(--green); background: rgba(125,184,122,0.08); }
 
         .pipeline-section { padding: 0 24px; max-width: 1200px; margin: 0 auto; }
         .pipeline-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 16px; padding-top: 8px; }
@@ -216,12 +340,105 @@ export default function AnalyzePage() {
             </div>
             <div className="field">
               <label>Employee responses</label>
-              <textarea
-                placeholder={"One response per line:\n\nI feel my work isn't recognized.\nThe team culture is great but workload is unsustainable.\nMore clarity on career growth would help."}
-                value={responses}
-                onChange={e => setResponses(e.target.value)}
-              />
-              <p className="hint">One response per line. Minimum 3 recommended.</p>
+
+              <div className="input-tabs" role="tablist">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={inputMode === 'paste'}
+                  className={`input-tab ${inputMode === 'paste' ? 'active' : ''}`}
+                  onClick={() => setInputMode('paste')}
+                >
+                  Paste
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={inputMode === 'upload'}
+                  className={`input-tab ${inputMode === 'upload' ? 'active' : ''}`}
+                  onClick={() => setInputMode('upload')}
+                >
+                  Upload spreadsheet
+                </button>
+              </div>
+
+              {inputMode === 'paste' && (
+                <>
+                  <textarea
+                    placeholder={"One response per line:\n\nI feel my work isn't recognized.\nThe team culture is great but workload is unsustainable.\nMore clarity on career growth would help."}
+                    value={responses}
+                    onChange={e => setResponses(e.target.value)}
+                  />
+                  <p className="hint">One response per line. Minimum 3 recommended.</p>
+                </>
+              )}
+
+              {inputMode === 'upload' && (
+                <>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv,.xlsx"
+                    style={{ display: 'none' }}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
+                  />
+
+                  <div
+                    className="dropzone"
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={e => e.preventDefault()}
+                    onDrop={e => {
+                      e.preventDefault()
+                      const f = e.dataTransfer.files?.[0]
+                      if (f) handleFile(f)
+                    }}
+                  >
+                    {fileName ? (
+                      <div className="dropzone-file">
+                        <span className="dropzone-filename">{fileName}</span>
+                        <button
+                          type="button"
+                          className="dropzone-clear"
+                          onClick={e => { e.stopPropagation(); resetUpload() }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="dropzone-prompt">
+                        <span className="dropzone-title">Drop a .csv or .xlsx file here</span>
+                        <span className="dropzone-sub">or click to browse</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {fileName && columns.length > 1 && (
+                    <div className="col-picker">
+                      <div className="col-picker-label">Which column holds the responses?</div>
+                      <div className="col-chips">
+                        {columns.map((col, i) => (
+                          <button
+                            type="button"
+                            key={i}
+                            className={`col-chip ${selectedCol === i ? 'active' : ''}`}
+                            onClick={() => setSelectedCol(i)}
+                          >
+                            {col}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {fileName && (
+                    <p className="hint">
+                      {selectedCol >= 0
+                        ? `${extractedResponses.length} response${extractedResponses.length === 1 ? '' : 's'} from "${columns[selectedCol]}".`
+                        : 'Select the column that contains the open-text responses.'}
+                    </p>
+                  )}
+                </>
+              )}
             </div>
           </div>
 
