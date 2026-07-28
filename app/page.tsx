@@ -1,5 +1,51 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
+import { Lock, Microscope, Zap, ArrowRight } from 'lucide-react'
+
+// Deterministic scatter so server and client render identical markup (no
+// hydration mismatch). Seeded PRNG — mulberry32.
+function mulberry32(seed: number) {
+  return function () {
+    seed |= 0
+    seed = (seed + 0x6d2b79f5) | 0
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+const rand = mulberry32(7)
+
+// Scattered individual "voices" on the left.
+const SCATTER = Array.from({ length: 34 }, () => ({
+  x: 24 + rand() * 250,
+  y: 20 + rand() * 160,
+  r: 1.5 + rand() * 1.7,
+  delay: rand() * 4,
+}))
+
+// The unified, structured pattern they converge into on the right.
+const CX = 476
+const CY = 100
+const RING_R = 42
+const RING_N = 10
+const RING = Array.from({ length: RING_N }, (_, i) => {
+  const a = (i / RING_N) * Math.PI * 2 - Math.PI / 2
+  return { x: CX + Math.cos(a) * RING_R, y: CY + Math.sin(a) * RING_R }
+})
+
+const FEATURES = [
+  { Icon: Lock, label: 'Architectural anonymity', caption: 'Privacy by methodology, not policy.' },
+  { Icon: Microscope, label: 'Research-grade methodology', caption: 'Every insight traces to a comment.' },
+  { Icon: Zap, label: 'Analysis on the fly', caption: 'Paste responses, click analyze.' },
+]
+
+const PIPELINE = [
+  { num: '00', name: 'Question type detection', caption: 'Routes the analysis' },
+  { num: '01', name: 'Qualitative coding', caption: 'Keywords from original text' },
+  { num: '02', name: 'Thematic categorization', caption: 'Grouped, traced to source' },
+  { num: '03', name: 'Executive synthesis', caption: 'Leadership-ready, no hallucination' },
+]
 
 export default function Home() {
   const [light, setLight] = useState(false)
@@ -27,8 +73,6 @@ export default function Home() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400&display=swap');
-
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
       :root {
@@ -55,7 +99,7 @@ export default function Home() {
 
         .page {
           min-height: 100vh;
-          font-family: 'DM Mono', monospace;
+          font-family: var(--font-sans), sans-serif;
           display: flex;
           flex-direction: column;
           position: relative;
@@ -110,7 +154,7 @@ export default function Home() {
           display: flex;
           align-items: center;
           gap: 2px;
-          font-family: 'DM Serif Display', serif;
+          font-family: var(--font-wordmark), serif;
           font-size: 35px;
           color: var(--text);
           letter-spacing: -0.02em;
@@ -122,7 +166,17 @@ export default function Home() {
           position: relative;
         }
 
+        .nav-link {
+          font-family: var(--font-sans), sans-serif;
+          font-weight: 500;
+          font-size: 12px;
+          text-decoration: none;
+          letter-spacing: 0.04em;
+        }
+
         .nav-tag {
+          font-family: var(--font-sans), sans-serif;
+          font-weight: 500;
           font-size: 11px;
           color: var(--green);
           letter-spacing: 0.12em;
@@ -145,6 +199,8 @@ export default function Home() {
         }
 
         .eyebrow {
+          font-family: var(--font-sans), sans-serif;
+          font-weight: 600;
           font-size: 11px;
           letter-spacing: 0.16em;
           text-transform: uppercase;
@@ -165,9 +221,10 @@ export default function Home() {
         }
 
         h1 {
-          font-family: 'DM Serif Display', serif;
+          font-family: var(--font-sans), sans-serif;
+          font-weight: 700;
           font-size: clamp(48px, 8vw, 88px);
-          line-height: 1.0;
+          line-height: 1.02;
           letter-spacing: -0.03em;
           color: var(--text);
           margin-bottom: 8px;
@@ -175,28 +232,56 @@ export default function Home() {
         }
 
         h1 em {
+          font-family: var(--font-accent), serif;
           font-style: italic;
+          font-weight: 400;
           color: var(--green);
         }
 
-        .tagline {
-          font-size: clamp(13px, 2vw, 16px);
+        .subhead {
+          font-family: var(--font-mono), monospace;
+          font-size: clamp(13px, 2vw, 15px);
           color: var(--muted);
-          max-width: 480px;
-          line-height: 1.7;
-          margin: 24px auto 48px;
-          font-weight: 300;
+          max-width: 460px;
+          line-height: 1.6;
+          margin: 20px auto 0;
+          font-weight: 400;
           animation: fadeUp 0.8s 0.15s ease both;
         }
+
+        /* Hero convergence visual — scattered voices → one structured pattern */
+        .converge {
+          width: 100%;
+          max-width: 560px;
+          height: auto;
+          display: block;
+          margin: 28px auto 36px;
+          animation: fadeUp 0.8s 0.2s ease both;
+        }
+        .converge .flow {
+          fill: none;
+          stroke: var(--green-dim);
+          stroke-width: 1;
+          opacity: 0.22;
+          stroke-dasharray: 2 6;
+          animation: flow 4s linear infinite;
+        }
+        .converge .scatter-dot { fill: var(--muted); animation: twinkle 4s ease-in-out infinite; }
+        .converge .ring-ring { fill: none; stroke: var(--green-dim); stroke-width: 1; opacity: 0.5; }
+        .converge .ring-dot { fill: var(--green); }
+        .converge .core { fill: var(--green); }
+
+        @keyframes flow { to { stroke-dashoffset: -80; } }
+        @keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.65; } }
 
         .cta-btn {
         display: inline-block;
         background: var(--green);
         color: #0e0f0d;
-        font-family: 'DM Mono', monospace;
+        font-family: var(--font-sans), sans-serif;
         font-size: 13px;
-        font-weight: 400;
-        letter-spacing: 0.06em;
+        font-weight: 600;
+        letter-spacing: 0.04em;
         text-transform: uppercase;
         padding: 14px 32px;
         border-radius: 8px;
@@ -209,7 +294,7 @@ export default function Home() {
 
         .features {
           display: flex;
-          gap: 32px;
+          gap: 40px;
           margin-top: 80px;
           flex-wrap: wrap;
           justify-content: center;
@@ -218,33 +303,98 @@ export default function Home() {
 
         .feature {
           display: flex;
-          align-items: flex-start;
-          gap: 12px;
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
           max-width: 200px;
+          text-align: center;
+        }
+
+        .feature-icon {
+          color: var(--green);
+          width: 38px;
+          height: 38px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid var(--border);
+          border-radius: 10px;
+          background: var(--surface);
+        }
+
+        .feature-label {
+          font-family: var(--font-sans), sans-serif;
+          font-weight: 600;
+          font-size: 14px;
+          color: var(--text);
+        }
+
+        .feature-cap {
+          font-family: var(--font-sans), sans-serif;
+          font-size: 12px;
+          color: var(--muted);
+          line-height: 1.5;
+        }
+
+        /* How it works — visual pipeline */
+        .pipeline-flow {
+          display: flex;
+          align-items: stretch;
+          justify-content: center;
+          gap: 0;
+          width: 100%;
+        }
+
+        .pipe-node {
+          flex: 1;
+          border: 1px solid var(--border);
+          border-radius: 10px;
+          padding: 18px 16px;
+          background: var(--surface);
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
           text-align: left;
         }
 
-        .feature-dot {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          background: var(--green);
-          margin-top: 6px;
+        .pipe-num {
+          font-family: var(--font-mono), monospace;
+          font-weight: 500;
+          font-size: 12px;
+          letter-spacing: 0.1em;
+          color: var(--green);
+        }
+
+        .pipe-name {
+          font-family: var(--font-sans), sans-serif;
+          font-weight: 600;
+          font-size: 13px;
+          color: var(--text);
+          line-height: 1.3;
+        }
+
+        .pipe-cap {
+          font-family: var(--font-sans), sans-serif;
+          font-size: 11px;
+          color: var(--muted);
+          line-height: 1.4;
+        }
+
+        .pipe-arrow {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--green-dim);
+          padding: 0 6px;
           flex-shrink: 0;
         }
 
-        .feature-text {
-          font-size: 12px;
+        .why-text {
+          font-family: var(--font-mono), monospace;
+          font-size: 13px;
           color: var(--muted);
-          line-height: 1.6;
-          font-weight: 300;
-        }
-
-        .feature-text strong {
-          display: block;
-          color: var(--text);
+          line-height: 1.8;
           font-weight: 400;
-          margin-bottom: 2px;
         }
 
         footer {
@@ -255,6 +405,7 @@ export default function Home() {
           display: flex;
           align-items: center;
           justify-content: space-between;
+          font-family: var(--font-sans), sans-serif;
           font-size: 11px;
           color: var(--muted);
           letter-spacing: 0.04em;
@@ -265,12 +416,16 @@ export default function Home() {
           to   { opacity: 1; transform: translateY(0); }
         }
 
+        @media (prefers-reduced-motion: reduce) {
+          .converge .flow, .converge .scatter-dot { animation: none; }
+        }
+
         @media (max-width: 600px) {
           nav { padding: 20px 24px; }
           footer { flex-direction: column; gap: 8px; text-align: center; }
           .features { gap: 20px; }
         }
-        
+
         @media (max-width: 768px) {
           nav { padding: 16px 20px; flex-wrap: nowrap; }
           .logo { font-size: 16px; }
@@ -281,11 +436,12 @@ export default function Home() {
           .nav-tag { display: none; }
           h1 { font-size: clamp(36px, 10vw, 88px); }
           main { padding: 40px 20px; }
-          .features { flex-direction: column; gap: 16px; }
+          .features { flex-direction: column; gap: 24px; }
           .feature { max-width: 100%; }
           .cta-btn { width: 100%; text-align: center; padding: 14px 20px; }
           footer { padding: 16px 20px; font-size: 10px; }
-          .how-it-works-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .pipeline-flow { flex-direction: column; }
+          .pipe-arrow { transform: rotate(90deg); padding: 8px 0; }
         }
 
       `}</style>
@@ -300,10 +456,10 @@ export default function Home() {
             <img src="/koala-logo.svg" alt="Qualai" width={60} height={60} style={{display:'block', marginTop:'8px'}} />            Qualai
           </div>
           <div style={{display:'flex', alignItems:'center', gap:'24px'}}>
-          <a href="/analyze" className="nav-try" style={{fontSize:'12px', color:'var(--green)', textDecoration:'none', letterSpacing:'0.04em'}}>Try it free</a>
-          <a href="/dashboard" style={{fontSize:'12px', color:'var(--muted)', textDecoration:'none', letterSpacing:'0.04em'}}>Dashboard</a>
-          <a href="/settings" style={{fontSize:'12px', color:'var(--muted)', textDecoration:'none', letterSpacing:'0.04em'}}>Settings</a>
-          
+          <a href="/analyze" className="nav-link nav-try" style={{color:'var(--green)'}}>Try it free</a>
+          <a href="/dashboard" className="nav-link" style={{color:'var(--muted)'}}>Dashboard</a>
+          <a href="/settings" className="nav-link" style={{color:'var(--muted)'}}>Settings</a>
+
           <button onClick={toggleTheme} style={{
             background: 'transparent',
             border: '1px solid var(--border)',
@@ -311,7 +467,7 @@ export default function Home() {
             padding: '4px 12px',
             borderRadius: '99px',
             fontSize: '11px',
-            fontFamily: 'DM Mono, monospace',
+            fontFamily: 'var(--font-sans), sans-serif',
             cursor: 'pointer',
             letterSpacing: '0.04em'
           }}>
@@ -327,65 +483,64 @@ export default function Home() {
 
           <h1>Understand what<br />your team <em>really</em> feels</h1>
 
-          <p className="tagline">
-            Qualitative responses take significant time and expertise to analyze. Most surveys aren't truly anonymous — so employees hold back. And the tools that exist are built for enterprises, not small teams. Qualai changes that.
+          <p className="subhead">
+            Scattered open-text responses become one structured, stakeholder-ready signal.
           </p>
+
+          <svg className="converge" viewBox="0 0 560 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            {/* flow lines: scattered voices stream toward the unified pattern */}
+            {SCATTER.map((d, i) => (
+              <path key={`f${i}`} className="flow" d={`M ${d.x} ${d.y} Q ${(d.x + CX) / 2} ${(d.y + CY) / 2 - 12} ${CX} ${CY}`} />
+            ))}
+            {/* scattered individual marks */}
+            {SCATTER.map((d, i) => (
+              <circle key={`s${i}`} className="scatter-dot" cx={d.x} cy={d.y} r={d.r} style={{ animationDelay: `${d.delay}s` }} />
+            ))}
+            {/* the unified, structured pattern */}
+            <circle className="ring-ring" cx={CX} cy={CY} r={RING_R} />
+            {RING.map((p, i) => (
+              <circle key={`r${i}`} className="ring-dot" cx={p.x} cy={p.y} r={3} />
+            ))}
+            <circle className="core" cx={CX} cy={CY} r={5} />
+          </svg>
 
           <a href="/analyze" className="cta-btn">
             Try it free
           </a>
 
           <div className="features">
-            <div className="feature">
-              <div className="feature-dot" />
-              <div className="feature-text">
-                <strong>Architectural anonymity</strong>
-                The pipeline dissolves individual voices into collective patterns at every stage — not by policy, but by methodology.
+            {FEATURES.map(({ Icon, label, caption }) => (
+              <div className="feature" key={label}>
+                <div className="feature-icon">
+                  <Icon size={20} strokeWidth={1.5} />
+                </div>
+                <div className="feature-label">{label}</div>
+                <div className="feature-cap">{caption}</div>
               </div>
-            </div>
-            <div className="feature">
-              <div className="feature-dot" />
-              <div className="feature-text">
-                <strong>Research-grade methodology</strong>
-                A 3-stage coding pipeline modeled on academic HR/OB research standards. Every insight traces back to an original comment.
-              </div>
-            </div>
-            <div className="feature">
-              <div className="feature-dot" />
-              <div className="feature-text">
-                <strong>Qualitative analysis on the fly</strong>
-                Paste responses, click analyze. Get a structured report with themes, sentiment, and executive recommendations in seconds.
-              </div>
-            </div>
+            ))}
           </div>
 
           <div style={{
             marginTop: '80px',
             width: '100%',
-            maxWidth: '900px',
+            maxWidth: '980px',
           }}>
             <div className="eyebrow" style={{justifyContent:'flex-start', marginBottom:'20px'}}>How it works</div>
-            
-            <div className="how-it-works-grid" style={{display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'8px'}}>
-              {[
-                { num: '00', title: 'Question type detection', desc: 'Qualai reads your question and determines what kind of analysis is needed — sentiment, strategic, process, or exploratory.' },
-                { num: '01', title: 'Qualitative coding', desc: 'Every response is coded into 3-5 keywords using only words from the original comment. No invented language, ever.' },
-                { num: '02', title: 'Thematic categorization', desc: 'Codes are grouped into themes and classified by polarity. Every insight traces back to an original comment.' },
-                { num: '03', title: 'Executive synthesis', desc: 'A leadership-ready summary built only from what the data produced. No hallucination. Exportable as PDF.' },
-              ].map((step, i) => (
-                <div key={i} style={{
-                  border: '1px solid var(--border)',
-                  borderRadius: '8px',
-                  padding: '16px',
-                  background: 'var(--surface)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px'
-                }}>
-                  <div style={{fontSize:'11px', fontWeight:500, color:'var(--green)', fontFamily:'DM Mono, monospace'}}>{step.num}</div>
-                  <div style={{fontSize:'12px', color:'var(--text)', fontWeight:400, lineHeight:'1.4'}}>{step.title}</div>
-                  <div style={{fontSize:'11px', color:'var(--muted)', lineHeight:'1.6', fontWeight:300}}>{step.desc}</div>
-                </div>
+
+            <div className="pipeline-flow">
+              {PIPELINE.map((step, i) => (
+                <Fragment key={step.num}>
+                  <div className="pipe-node">
+                    <div className="pipe-num">{step.num}</div>
+                    <div className="pipe-name">{step.name}</div>
+                    <div className="pipe-cap">{step.caption}</div>
+                  </div>
+                  {i < PIPELINE.length - 1 && (
+                    <div className="pipe-arrow">
+                      <ArrowRight size={18} strokeWidth={1.5} />
+                    </div>
+                  )}
+                </Fragment>
               ))}
             </div>
           </div>
@@ -401,17 +556,11 @@ export default function Home() {
           }}>
 
             <div className="eyebrow" style={{justifyContent:'flex-start', marginBottom:'20px'}}>Why Qualai</div>
-            <p style={{fontSize:'13px', color:'var(--muted)', lineHeight:'1.8', fontFamily:'DM Mono, monospace', fontWeight:300, marginBottom:'16px'}}>
-              Most HR tools claim anonymity through a privacy policy. Qualai builds it into the methodology — by the time insights reach leadership, individual voices have been dissolved into collective patterns across three analysis stages.
-            </p>
-            <p style={{fontSize:'13px', color:'var(--muted)', lineHeight:'1.8', fontFamily:'DM Mono, monospace', fontWeight:300, marginBottom:'16px'}}>
-              A single AI prompt can summarize feedback. But it can't guarantee repeatability, auditability, or protection against hallucination. Qualai's structured pipeline enforces the same rigorous process on every analysis — so results are comparable across time and defensible in a leadership meeting.
-            </p>
-            <p style={{fontSize:'13px', color:'var(--muted)', lineHeight:'1.8', fontFamily:'DM Mono, monospace', fontWeight:300}}>
-              Built for teams of 5–50 who can't afford enterprise HR software but deserve enterprise-grade insight.
+            <p className="why-text">
+              Most HR tools promise anonymity in a privacy policy; Qualai builds it into the methodology, dissolving individual voices into collective patterns before insights reach leadership. The same structured pipeline runs on every analysis, so results stay comparable over time and defensible in a leadership meeting — built for teams of 5–50 who can't afford enterprise HR software but deserve enterprise-grade insight.
             </p>
           </div>
-        
+
         <div style={{
           marginTop: '48px',
           padding: '48px',
@@ -423,12 +572,12 @@ export default function Home() {
           background: 'var(--surface)'
         }}>
           <div className="eyebrow" style={{justifyContent:'center', marginBottom:'20px'}}>Work with me</div>
-          
-          <h2 style={{fontFamily:'DM Serif Display, serif', fontSize:'28px', color:'var(--text)', marginBottom:'16px', lineHeight:'1.3'}}>
+
+          <h2 style={{fontFamily:'var(--font-wordmark), serif', fontSize:'28px', color:'var(--text)', marginBottom:'16px', lineHeight:'1.3'}}>
             Interested in bringing this kind of thinking to your organization?
           </h2>
-          
-          <p style={{fontSize:'13px', color:'var(--muted)', lineHeight:'1.8', fontFamily:'DM Mono, monospace', fontWeight:300, marginBottom:'32px'}}>
+
+          <p style={{fontSize:'13px', color:'var(--muted)', lineHeight:'1.8', fontFamily:'var(--font-mono), monospace', fontWeight:400, marginBottom:'32px'}}>
             I'm a recent Employment Relations graduate from Queen's University actively looking for opportunities in HR analytics, people ops, and organizational development. I also take on consulting projects — if your HR team or consulting firm needs a custom qualitative analysis tool, a people analytics solution, or just someone who thinks deeply about the intersection of HR and AI, let's talk.
           </p>
 
@@ -437,7 +586,7 @@ export default function Home() {
               display:'inline-flex', alignItems:'center', gap:'6px',
               background:'var(--green)', color:'#0e0f0d',
               padding:'12px 24px', borderRadius:'8px',
-              fontSize:'12px', fontFamily:'DM Mono, monospace',
+              fontSize:'12px', fontFamily:'var(--font-mono), monospace',
               letterSpacing:'0.06em', textTransform:'uppercase',
               textDecoration:'none', transition:'background 0.2s'
             }}>
@@ -448,7 +597,7 @@ export default function Home() {
               background:'transparent', color:'var(--text)',
               border:'1px solid var(--border)',
               padding:'12px 24px', borderRadius:'8px',
-              fontSize:'12px', fontFamily:'DM Mono, monospace',
+              fontSize:'12px', fontFamily:'var(--font-mono), monospace',
               letterSpacing:'0.06em', textTransform:'uppercase',
               textDecoration:'none', transition:'all 0.2s'
             }}>
