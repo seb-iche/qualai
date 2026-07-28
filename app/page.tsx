@@ -23,6 +23,16 @@ function VNode({ cx, cy, variant, title, sub }: {
   )
 }
 
+// Marks flowing down the hero "warp pipe" — staggered across the loop.
+const PIPE_DOTS = [
+  { delay: 0.0, x: 0 },
+  { delay: 0.55, x: -6 },
+  { delay: 1.1, x: 5 },
+  { delay: 1.65, x: -3 },
+  { delay: 2.2, x: 6 },
+  { delay: 2.75, x: -5 },
+]
+
 const FEATURES = [
   { Icon: Lock, label: 'Architectural anonymity', caption: 'Privacy by methodology, not policy.' },
   { Icon: Microscope, label: 'Research-grade methodology', caption: 'Every insight traces to a comment.' },
@@ -240,13 +250,98 @@ export default function Home() {
           animation: fadeUp 0.8s 0.15s ease both;
         }
 
-        /* Hero value-proposition map */
+        /* Hero split: 3/4 content + 1/4 warp pipe */
+        .hero {
+          width: 100%;
+          max-width: 1120px;
+          display: grid;
+          grid-template-columns: 3fr 1fr;
+          gap: 48px;
+          align-items: stretch;
+        }
+        .hero-main {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          justify-content: center;
+          text-align: left;
+        }
+        .hero-main .eyebrow { justify-content: flex-start; margin-bottom: 24px; }
+        .hero-main h1 { font-size: clamp(40px, 5.4vw, 76px); text-align: left; }
+        .hero-main .subhead { margin: 20px 0 0; text-align: left; max-width: 520px; }
+        .hero-main .cta-btn { margin-top: 36px; }
+
+        .hero-aside {
+          display: flex;
+          align-items: stretch;
+          justify-content: center;
+          min-height: 380px;
+        }
+
+        /* Warp pipe */
+        .mpipe {
+          position: relative;
+          width: 92px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          animation: fadeUp 0.8s 0.25s ease both;
+        }
+        .mpipe-rim {
+          width: 122px;
+          height: 34px;
+          border-radius: 11px;
+          background: linear-gradient(90deg, #365c34 0%, #7dc079 20%, #b7e3b2 34%, #7db87a 62%, #2f5330 100%);
+          border: 2px solid #223d1f;
+          box-shadow: 0 5px 14px rgba(0,0,0,0.32);
+          z-index: 2;
+        }
+        .mpipe-body {
+          position: relative;
+          width: 92px;
+          flex: 1;
+          margin-top: -2px;
+          overflow: hidden;
+          background: linear-gradient(90deg, #365c34 0%, #7dc079 20%, #b7e3b2 34%, #7db87a 62%, #2f5330 100%);
+          border-left: 2px solid #223d1f;
+          border-right: 2px solid #223d1f;
+          -webkit-mask-image: linear-gradient(to bottom, #000 76%, transparent 100%);
+          mask-image: linear-gradient(to bottom, #000 76%, transparent 100%);
+        }
+        /* dark opening so marks read as emerging from the pipe */
+        .mpipe-body::before {
+          content: '';
+          position: absolute;
+          top: 0; left: 0; right: 0;
+          height: 26px;
+          background: linear-gradient(to bottom, rgba(0,0,0,0.4), transparent);
+          z-index: 1;
+        }
+        .mpipe-dot {
+          position: absolute;
+          top: -12%;
+          width: 11px;
+          height: 11px;
+          border-radius: 50%;
+          transform: translateX(-50%);
+          background: radial-gradient(circle at 35% 30%, #ffffff, #d7efd3 55%, #9bd196);
+          box-shadow: 0 0 8px rgba(200,255,200,0.55);
+          animation: pipeFlow 3.3s linear infinite;
+        }
+        @keyframes pipeFlow {
+          0%   { top: -12%; opacity: 0; }
+          10%  { opacity: 1; }
+          86%  { opacity: 1; }
+          100% { top: 108%; opacity: 0; }
+        }
+
+        /* Value-proposition map (own section below the hero) */
+        .valueprop-wrap { width: 100%; display: flex; justify-content: center; margin-top: 72px; }
         .valueprop {
           width: 100%;
           max-width: 600px;
           height: auto;
           display: block;
-          margin: 24px auto 40px;
           animation: fadeUp 0.8s 0.2s ease both;
         }
         .valueprop .vp-line { fill: none; stroke: var(--muted); stroke-width: 1.4; opacity: 0.5; }
@@ -407,6 +502,7 @@ export default function Home() {
 
         @media (prefers-reduced-motion: reduce) {
           .vp-rect-final { animation: none; }
+          .mpipe-dot { animation: none; }
         }
 
         @media (max-width: 600px) {
@@ -425,6 +521,14 @@ export default function Home() {
           .nav-tag { display: none; }
           h1 { font-size: clamp(36px, 10vw, 88px); }
           main { padding: 40px 20px; }
+          .hero { grid-template-columns: 1fr; gap: 0; }
+          .hero-main { align-items: center; text-align: center; }
+          .hero-main .eyebrow { justify-content: center; }
+          .hero-main h1, .hero-main .subhead { text-align: center; }
+          .hero-main .subhead { margin-left: auto; margin-right: auto; }
+          .hero-main .cta-btn { align-self: stretch; }
+          .hero-aside { display: none; }
+          .valueprop-wrap { margin-top: 48px; }
           .features { flex-direction: column; gap: 24px; }
           .feature { max-width: 100%; }
           .cta-btn { width: 100%; text-align: center; padding: 14px 20px; }
@@ -468,14 +572,38 @@ export default function Home() {
         </nav>
 
         <main>
-          <div className="eyebrow">Qualitative AI for HR</div>
+          <div className="hero">
+            <div className="hero-main">
+              <div className="eyebrow">Qualitative AI for HR</div>
 
-          <h1>Understand what<br />your team <em>really</em> feels</h1>
+              <h1>Understand what<br />your team <em>really</em> feels</h1>
 
-          <p className="subhead">
-            Scattered open-text responses become one structured, stakeholder-ready signal.
-          </p>
+              <p className="subhead">
+                Scattered open-text responses become one structured, stakeholder-ready signal.
+              </p>
 
+              <a href="/analyze" className="cta-btn">
+                Try it free
+              </a>
+            </div>
+
+            <div className="hero-aside" aria-hidden="true">
+              <div className="mpipe">
+                <div className="mpipe-rim" />
+                <div className="mpipe-body">
+                  {PIPE_DOTS.map((d, i) => (
+                    <span
+                      key={i}
+                      className="mpipe-dot"
+                      style={{ left: `calc(50% + ${d.x}px)`, animationDelay: `${d.delay}s` }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="valueprop-wrap">
           <svg className="valueprop" viewBox="0 0 640 464" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Open-text survey data is the richest but least-used signal because analysis is too expensive and too risky; Qualai answers both with speed and trust to unlock leadership-ready insight.">
             <defs>
               <marker id="vp-arrow" markerWidth="9" markerHeight="9" refX="6.5" refY="4.5" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
@@ -500,10 +628,7 @@ export default function Home() {
             <VNode cx={472} cy={294} variant="solution" title="Trust" sub="Anonymity + BYOK" />
             <VNode cx={320} cy={418} variant="final" title="Unlocked signal" sub="Leadership-ready insight" />
           </svg>
-
-          <a href="/analyze" className="cta-btn">
-            Try it free
-          </a>
+          </div>
 
           <div className="features">
             {FEATURES.map(({ Icon, label, caption }) => (
