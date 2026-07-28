@@ -49,38 +49,37 @@ export default function SettingsPage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         :root {
           --bg: #0e0f0d; --surface: #161710; --green: #7db87a; --green-dim: #4a7a47;
           --text: #e8e6df; --muted: #7a7870; --border: rgba(125,184,122,0.15); --red: #e07070;
         }
         html, body { background: var(--bg); color: var(--text); }
-        .page { min-height: 100vh; font-family: 'DM Mono', monospace; padding: 48px 24px; max-width: 600px; margin: 0 auto; }
+        .page { min-height: 100vh; font-family: var(--font-sans), sans-serif; padding: 48px 24px; max-width: 600px; margin: 0 auto; }
         .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 48px; }
-        .logo { display: flex; align-items: center; gap: 8px; font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--text); text-decoration: none; }
+        .logo { display: flex; align-items: center; gap: 8px; font-family: var(--font-wordmark), serif; font-size: 20px; color: var(--text); text-decoration: none; }
         .nav-links { display: flex; gap: 24px; }
         .nav-link { font-size: 12px; color: var(--muted); text-decoration: none; letter-spacing: 0.04em; transition: color 0.15s; }
         .nav-link:hover { color: var(--text); }
         .nav-link.active { color: var(--green); }
-        h1 { font-family: 'DM Serif Display', serif; font-size: 32px; color: var(--text); margin-bottom: 8px; }
-        .subtitle { font-size: 13px; color: var(--muted); margin-bottom: 40px; line-height: 1.6; font-weight: 300; }
+        h1 { font-family: var(--font-sans), sans-serif; font-weight: 700; letter-spacing: -0.02em; font-size: 32px; color: var(--text); margin-bottom: 8px; }
+        .subtitle { font-family: var(--font-mono), monospace; font-size: 13px; color: var(--muted); margin-bottom: 40px; line-height: 1.6; font-weight: 400; }
         .mode-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 32px; }
         .mode-card { border: 1px solid var(--border); border-radius: 8px; padding: 20px; cursor: pointer; transition: all 0.15s; background: var(--surface); }
         .mode-card:hover { border-color: var(--green-dim); }
         .mode-card.active { border-color: var(--green); background: rgba(125,184,122,0.05); }
-        .mode-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
-        .mode-desc { font-size: 11px; color: var(--muted); line-height: 1.6; font-weight: 300; }
+        .mode-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+        .mode-desc { font-family: var(--font-mono), monospace; font-size: 11px; color: var(--muted); line-height: 1.6; font-weight: 400; }
         .field { margin-bottom: 20px; }
-        label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--green); margin-bottom: 8px; }
-        input { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; font-family: 'DM Mono', monospace; font-size: 13px; color: var(--text); outline: none; transition: border-color 0.2s; font-weight: 300; }
+        label { display: block; font-family: var(--font-sans), sans-serif; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--green); margin-bottom: 8px; }
+        input { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; font-family: var(--font-mono), monospace; font-size: 13px; color: var(--text); outline: none; transition: border-color 0.2s; font-weight: 400; }
         input:focus { border-color: var(--green-dim); }
-        .btn { width: 100%; background: var(--green); color: #0e0f0d; border: none; padding: 14px; font-family: 'DM Mono', monospace; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 8px; cursor: pointer; transition: background 0.2s; margin-bottom: 12px; }
+        .btn { width: 100%; background: var(--green); color: #0e0f0d; border: none; padding: 14px; font-family: var(--font-sans), sans-serif; font-weight: 600; font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 8px; cursor: pointer; transition: background 0.2s; margin-bottom: 12px; }
         .btn:hover { background: #8ec98b; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn-outline { width: 100%; background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 12px; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+        .btn-outline { width: 100%; background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 12px; font-family: var(--font-sans), sans-serif; font-weight: 500; font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
         .btn-outline:hover { border-color: var(--red); color: var(--red); }
-        .status { font-size: 12px; line-height: 1.6; padding: 12px 16px; border-radius: 8px; margin-top: 16px; background: rgba(125,184,122,0.08); border: 1px solid rgba(125,184,122,0.2); color: var(--text); font-weight: 300; }
+        .status { font-family: var(--font-mono), monospace; font-size: 12px; line-height: 1.6; padding: 12px 16px; border-radius: 8px; margin-top: 16px; background: rgba(125,184,122,0.08); border: 1px solid rgba(125,184,122,0.2); color: var(--text); font-weight: 400; }
         .status.error { background: rgba(224,112,112,0.08); border-color: rgba(224,112,112,0.2); color: var(--red); }
         .divider { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
       `}</style>

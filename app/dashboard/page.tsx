@@ -272,7 +272,6 @@ export default function DashboardPage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         :root {
           --bg: #0e0f0d; --surface: #161710; --green: #7db87a; --green-dim: #4a7a47;
@@ -280,9 +279,9 @@ export default function DashboardPage() {
           --red: #e07070; --amber: #e0b870;
         }
         html, body { background: var(--bg); color: var(--text); }
-        .page { min-height: 100vh; font-family: 'DM Mono', monospace; display: grid; grid-template-columns: 300px 1fr; grid-template-rows: auto 1fr; }
+        .page { min-height: 100vh; font-family: var(--font-sans), sans-serif; display: grid; grid-template-columns: 300px 1fr; grid-template-rows: auto 1fr; }
         .topbar { grid-column: 1/-1; display: flex; align-items: center; justify-content: space-between; padding: 20px 32px; border-bottom: 1px solid var(--border); }
-        .logo { display: flex; align-items: center; gap: 8px; font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--text); text-decoration: none; }
+        .logo { display: flex; align-items: center; gap: 8px; font-family: var(--font-wordmark), serif; font-size: 20px; color: var(--text); text-decoration: none; }
         .nav-links { display: flex; gap: 24px; }
         .nav-link { font-size: 12px; color: var(--muted); text-decoration: none; letter-spacing: 0.04em; transition: color 0.15s; }
         .nav-link:hover { color: var(--text); }
@@ -292,34 +291,34 @@ export default function DashboardPage() {
         .analysis-item { padding: 14px 20px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.15s; }
         .analysis-item:hover { background: rgba(125,184,122,0.05); }
         .analysis-item.active { background: rgba(125,184,122,0.08); border-left: 2px solid var(--green); }
-        .item-question { font-size: 12px; color: var(--text); margin-bottom: 6px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .item-question { font-family: var(--font-mono), monospace; font-size: 12px; color: var(--text); margin-bottom: 6px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .item-meta { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--muted); }
         .sentiment-pills { display: flex; gap: 4px; }
-        .pill { font-size: 10px; padding: 2px 6px; border-radius: 99px; font-weight: 500; }
+        .pill { font-family: var(--font-mono), monospace; font-size: 10px; padding: 2px 6px; border-radius: 99px; font-weight: 500; }
         .pill-green { background: rgba(125,184,122,0.15); color: var(--green); }
         .pill-red { background: rgba(224,112,112,0.15); color: var(--red); }
         .pill-amber { background: rgba(224,184,112,0.15); color: var(--amber); }
         .main { overflow-y: auto; padding: 32px; }
         .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--muted); text-align: center; gap: 12px; }
-        .detail-question { font-family: 'DM Serif Display', serif; font-size: 24px; color: var(--text); margin-bottom: 8px; line-height: 1.3; }
+        .detail-question { font-family: var(--font-sans), sans-serif; font-weight: 700; letter-spacing: -0.02em; font-size: 24px; color: var(--text); margin-bottom: 8px; line-height: 1.3; }
         .detail-meta { display: flex; gap: 16px; font-size: 12px; color: var(--muted); margin-bottom: 28px; }
         .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
         .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center; }
-        .stat-num { font-size: 28px; font-weight: 400; margin-bottom: 4px; }
+        .stat-num { font-family: var(--font-mono), monospace; font-size: 28px; font-weight: 500; margin-bottom: 4px; }
         .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
         .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
         .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
         .chart-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--green); margin-bottom: 16px; }
         .bubble-map { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 24px; }
         .bubbles { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 8px 0; }
-        .bubble { border-radius: 99px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 400; text-align: center; padding: 8px 16px; transition: transform 0.15s; cursor: default; line-height: 1.3; }
+        .bubble { font-family: var(--font-mono), monospace; border-radius: 99px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 400; text-align: center; padding: 8px 16px; transition: transform 0.15s; cursor: default; line-height: 1.3; }
         .bubble:hover { transform: scale(1.05); }
         .result-section { border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 16px; background: var(--surface); }
         .result-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--green); margin-bottom: 12px; }
-        .result-content { font-size: 13px; color: var(--text); line-height: 1.8; white-space: pre-wrap; font-weight: 300; }
-        .new-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--green); color: #0e0f0d; border: none; padding: 10px 20px; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 6px; cursor: pointer; text-decoration: none; transition: background 0.2s; margin-top: 16px; }
+        .result-content { font-family: var(--font-mono), monospace; font-size: 13px; color: var(--text); line-height: 1.8; white-space: pre-wrap; font-weight: 400; }
+        .new-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--green); color: #0e0f0d; border: none; padding: 10px 20px; font-family: var(--font-sans), sans-serif; font-weight: 600; font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 6px; cursor: pointer; text-decoration: none; transition: background 0.2s; margin-top: 16px; }
         .new-btn:hover { background: #8ec98b; }
-        .custom-tooltip { background: #1e2018; border: 1px solid rgba(125,184,122,0.2); border-radius: 6px; padding: 8px 12px; font-size: 11px; color: var(--text); font-family: 'DM Mono', monospace; }
+        .custom-tooltip { background: #1e2018; border: 1px solid rgba(125,184,122,0.2); border-radius: 6px; padding: 8px 12px; font-size: 11px; color: var(--text); font-family: var(--font-mono), monospace; }
 
         @media (max-width: 768px) {
         .page { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr; }
@@ -420,8 +419,9 @@ export default function DashboardPage() {
                 padding: '6px 14px',
                 borderRadius: '6px',
                 fontSize: '11px',
-                fontFamily: 'DM Mono, monospace',
-                letterSpacing: '0.06em',
+                fontFamily: 'var(--font-sans), sans-serif',
+                fontWeight: 600,
+                letterSpacing: '0.04em',
                 textTransform: 'uppercase',
                 cursor: 'pointer',
                 transition: 'all 0.15s'
@@ -490,7 +490,7 @@ export default function DashboardPage() {
                             <Cell key={i} fill={entry.name === 'Positive' ? GREEN : entry.name === 'Negative' ? RED : AMBER} />
                           ))}
                         </Pie>
-                        <Tooltip contentStyle={{background:'#1e2018',border:'1px solid rgba(125,184,122,0.2)',borderRadius:'6px',fontFamily:'DM Mono',fontSize:'11px'}} />
+                        <Tooltip contentStyle={{background:'#1e2018',border:'1px solid rgba(125,184,122,0.2)',borderRadius:'6px',fontFamily:'var(--font-mono), monospace',fontSize:'11px'}} />
                       </PieChart>
                     </ResponsiveContainer>
                     <div style={{display:'flex',gap:'16px',justifyContent:'center',fontSize:'11px',color:'var(--muted)',marginTop:'8px'}}>
@@ -504,8 +504,8 @@ export default function DashboardPage() {
                     <div className="chart-title">Theme frequency</div>
                     <ResponsiveContainer width="100%" height={200}>
                       <BarChart data={barData} margin={{top:0,right:0,left:-20,bottom:40}}>
-                        <XAxis dataKey="name" tick={{fill:'#7a7870',fontSize:10,fontFamily:'DM Mono'}} angle={-35} textAnchor="end" interval={0} />
-                        <YAxis tick={{fill:'#7a7870',fontSize:10,fontFamily:'DM Mono'}} />
+                        <XAxis dataKey="name" tick={{fill:'#7a7870',fontSize:10,fontFamily:'var(--font-mono), monospace'}} angle={-35} textAnchor="end" interval={0} />
+                        <YAxis tick={{fill:'#7a7870',fontSize:10,fontFamily:'var(--font-mono), monospace'}} />
                         <Tooltip
                           content={({active,payload}) => active && payload?.length ? (
                             <div className="custom-tooltip">
