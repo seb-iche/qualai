@@ -387,7 +387,18 @@ export default function Home() {
         @keyframes engDoorR { to { transform: translateX(26px); opacity: 0; } }
 
         /* Value-proposition map (own section below the hero) */
-        .valueprop-wrap { width: 100%; display: flex; justify-content: center; margin-top: 72px; }
+        /* Why Qualai — value-prop diagram annotated with the argument */
+        .why-vp { width: 100%; max-width: 1120px; margin: 72px auto 0; display: flex; flex-direction: column; align-items: center; }
+        .why-intro { font-family: var(--font-mono), monospace; font-size: 14px; color: var(--text); max-width: 640px; text-align: center; line-height: 1.7; margin-bottom: 32px; }
+        .why-grid { display: grid; grid-template-columns: 1fr minmax(0, 480px) 1fr; gap: 32px; align-items: center; width: 100%; }
+        .why-grid .valueprop { max-width: 480px; margin: 0; }
+        .why-note { max-width: 300px; }
+        .why-note-left { justify-self: end; text-align: right; }
+        .why-note-right { justify-self: start; text-align: left; }
+        .why-note-label { font-family: var(--font-sans), sans-serif; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--green); margin-bottom: 10px; }
+        .why-note p { font-family: var(--font-mono), monospace; font-size: 12.5px; color: var(--muted); line-height: 1.75; }
+        .why-payoff { font-family: var(--font-mono), monospace; font-size: 13.5px; color: var(--text); text-align: center; max-width: 660px; line-height: 1.7; margin-top: 28px; padding-top: 28px; border-top: 1px solid var(--border); }
+
         .valueprop {
           width: 100%;
           max-width: 600px;
@@ -574,7 +585,10 @@ export default function Home() {
           main { padding: 40px 20px; }
           .hero .cta-btn { align-self: stretch; }
           .engine { margin-top: 36px; }
-          .valueprop-wrap { margin-top: 48px; }
+          .why-vp { margin-top: 48px; }
+          .why-grid { grid-template-columns: 1fr; gap: 20px; justify-items: center; }
+          .why-note { max-width: 460px; text-align: center; }
+          .why-note-left, .why-note-right { justify-self: center; text-align: center; }
           .features { flex-direction: column; gap: 24px; }
           .feature { max-width: 100%; }
           .cta-btn { width: 100%; text-align: center; padding: 14px 20px; }
@@ -671,48 +685,54 @@ export default function Home() {
 
           <EngineDiagram />
 
-          <div className="valueprop-wrap">
-          <svg className="valueprop" viewBox="0 0 640 464" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Open-text survey data is the richest but least-used signal because analysis is too expensive and too risky; Qualai answers both with speed and trust to unlock leadership-ready insight.">
-            <defs>
-              <marker id="vp-arrow" markerWidth="9" markerHeight="9" refX="6.5" refY="4.5" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
-                <path className="vp-arrowhead" d="M2,2 L7,4.5 L2,7 Z" />
-              </marker>
-            </defs>
+          <section className="why-vp">
+            <div className="eyebrow" style={{justifyContent:'center', marginBottom:'20px'}}>Why Qualai</div>
 
-            {/* connectors (drawn first so node cards sit on top) */}
-            <path className="vp-line" d="M292 76 L178 140" markerEnd="url(#vp-arrow)" />
-            <path className="vp-line" d="M348 76 L462 140" markerEnd="url(#vp-arrow)" />
-            <path className="vp-line" d="M168 200 L168 262" markerEnd="url(#vp-arrow)" />
-            <path className="vp-line" d="M472 200 L472 262" markerEnd="url(#vp-arrow)" />
-            <path className="vp-line" d="M196 324 L300 386" markerEnd="url(#vp-arrow)" />
-            <path className="vp-line" d="M444 324 L340 386" markerEnd="url(#vp-arrow)" />
-            {/* speed & trust reinforce each other */}
-            <path className="vp-line" d="M296 294 L344 294" markerStart="url(#vp-arrow)" markerEnd="url(#vp-arrow)" />
-
-            <VNode cx={320} cy={46} variant="neutral" title="Open-text survey data" sub="Richest signal, least used" />
-            <VNode cx={168} cy={170} variant="problem" title="Too expensive" sub="Days of manual coding" />
-            <VNode cx={472} cy={170} variant="problem" title="Too risky" sub="No trust guarantees" />
-            <VNode cx={168} cy={294} variant="solution" title="Speed" sub="4-stage AI pipeline" />
-            <VNode cx={472} cy={294} variant="solution" title="Trust" sub="Anonymity + BYOK" />
-            <VNode cx={320} cy={418} variant="final" title="Unlocked signal" sub="Leadership-ready insight" />
-          </svg>
-          </div>
-
-          <div style={{
-            marginTop: '48px',
-            padding: '48px',
-            border: '1px solid var(--border)',
-            borderRadius: '12px',
-            maxWidth: '700px',
-            width: '100%',
-            textAlign: 'left'
-          }}>
-
-            <div className="eyebrow" style={{justifyContent:'flex-start', marginBottom:'20px'}}>Why Qualai</div>
-            <p className="why-text">
-              Most HR tools promise anonymity in a privacy policy; Qualai builds it into the methodology, dissolving individual voices into collective patterns before insights reach leadership. The same structured pipeline runs on every analysis, so results stay comparable over time and defensible in a leadership meeting — built for teams of 5–50 who can't afford enterprise HR software but deserve enterprise-grade insight.
+            <p className="why-intro">
+              Open-text responses are the richest HR signal and the least used — analyzing them has been too expensive and too risky. Qualai answers both at once.
             </p>
-          </div>
+
+            <div className="why-grid">
+              <div className="why-note why-note-left">
+                <div className="why-note-label">Speed</div>
+                <p>Manual qualitative coding takes days. The same 4-stage pipeline runs on every analysis, so results stay fast, comparable over time, and defensible in a leadership meeting.</p>
+              </div>
+
+              <svg className="valueprop" viewBox="0 0 640 464" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Open-text survey data is the richest but least-used signal because analysis is too expensive and too risky; Qualai answers both with speed and trust to unlock leadership-ready insight.">
+                <defs>
+                  <marker id="vp-arrow" markerWidth="9" markerHeight="9" refX="6.5" refY="4.5" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+                    <path className="vp-arrowhead" d="M2,2 L7,4.5 L2,7 Z" />
+                  </marker>
+                </defs>
+
+                {/* connectors (drawn first so node cards sit on top) */}
+                <path className="vp-line" d="M292 76 L178 140" markerEnd="url(#vp-arrow)" />
+                <path className="vp-line" d="M348 76 L462 140" markerEnd="url(#vp-arrow)" />
+                <path className="vp-line" d="M168 200 L168 262" markerEnd="url(#vp-arrow)" />
+                <path className="vp-line" d="M472 200 L472 262" markerEnd="url(#vp-arrow)" />
+                <path className="vp-line" d="M196 324 L300 386" markerEnd="url(#vp-arrow)" />
+                <path className="vp-line" d="M444 324 L340 386" markerEnd="url(#vp-arrow)" />
+                {/* speed & trust reinforce each other */}
+                <path className="vp-line" d="M296 294 L344 294" markerStart="url(#vp-arrow)" markerEnd="url(#vp-arrow)" />
+
+                <VNode cx={320} cy={46} variant="neutral" title="Open-text survey data" sub="Richest signal, least used" />
+                <VNode cx={168} cy={170} variant="problem" title="Too expensive" sub="Days of manual coding" />
+                <VNode cx={472} cy={170} variant="problem" title="Too risky" sub="No trust guarantees" />
+                <VNode cx={168} cy={294} variant="solution" title="Speed" sub="4-stage AI pipeline" />
+                <VNode cx={472} cy={294} variant="solution" title="Trust" sub="Anonymity + BYOK" />
+                <VNode cx={320} cy={418} variant="final" title="Unlocked signal" sub="Leadership-ready insight" />
+              </svg>
+
+              <div className="why-note why-note-right">
+                <div className="why-note-label">Trust</div>
+                <p>Most HR tools promise anonymity in a privacy policy. Qualai builds it into the methodology — individual voices dissolve into collective patterns before insights reach leadership, and BYOK keeps analysis on your own key.</p>
+              </div>
+            </div>
+
+            <p className="why-payoff">
+              Built for teams of 5–50 who can't afford enterprise HR software but deserve enterprise-grade insight.
+            </p>
+          </section>
 
         <div style={{
           marginTop: '48px',
