@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
+import { parseThemes } from '@/lib/themes'
 
 export async function POST(request: NextRequest) {
   const { question, responses, userApiKey } = await request.json()
@@ -152,54 +153,107 @@ Instructions:
 
     const categories = categorization.content[0].type === 'text' ? categorization.content[0].text : ''
 
-    // Prompt 3: Executive Summary — branched by question type
-    const prompt3Content = questionType === 'strategic' ?
-    `You are a PhD Analyst producing a strategic HR synthesis.
+    // Prompt 3: Executive synthesis — structured JSON, grounded in the
+    // original responses so evidence quotes real comments (traceability).
+    const typeGuidance = questionType === 'strategic'
+      ? 'Frame priorities as strategic actions; category tags are Opportunity / Blocker / Consideration.'
+      : questionType === 'process'
+      ? 'Frame priorities as process changes; category tags are Working Well / Needs Improvement / Unclear.'
+      : questionType === 'exploration'
+      ? 'Frame priorities as areas to investigate; category tags are Prominent / Emerging / Peripheral.'
+      : 'Frame priorities around employee sentiment; category tags are Positive / Negative / Neutral.'
 
-    Question: ${question}
+    const synthesisPrompt = `You are a PhD Analyst producing a leadership-ready synthesis of an HR survey. ${typeGuidance}
 
-    Categorized themes:
-    ${categories}
+Question: ${question}
 
-    Produce a thematic summary per category focused on strategic priorities. Then write a 2-3 paragraph executive synthesis for HR leadership that identifies the top priorities to act on, the key blockers to address, and specific recommended next steps. Stay grounded in the data — no invented insights.`
+Categorized themes (with per-category polarity counts):
+${categories}
 
-    : questionType === 'process' ?
-    `You are a PhD Analyst producing a process evaluation HR synthesis.
+Original employee responses (numbered — you MUST quote from these verbatim for evidence):
+${responseList}
 
-    Question: ${question}
+Return a SINGLE JSON object with exactly this shape:
+{
+  "criticalFindings": { "headline": "one-line headline for leadership", "summary": "2-4 sentence executive synthesis leading with the most important finding" },
+  "topPriorities": [ { "priority": "specific action to take", "urgency": "high" | "medium" | "low", "relatedCategory": "related theme name" } ],
+  "categories": [ { "name": "theme name (match the categorized themes above)", "narrative": "1-2 sentences on what this theme shows", "strategicPriority": "the single most important action or watch-item for this theme", "evidence": [ { "originalComment": "a VERBATIM quote copied exactly from a numbered response above", "tag": "the assigned polarity/label" } ] } ]
+}
 
-    Categorized themes:
-    ${categories}
-
-    Produce a thematic summary per category focused on process effectiveness. Then write a 2-3 paragraph executive synthesis for HR leadership that identifies what is working well and should be preserved, what needs immediate improvement, and specific process changes recommended. Stay grounded in the data — no invented insights.`
-
-    : questionType === 'exploration' ?
-    `You are a PhD Analyst producing an exploratory HR synthesis.
-
-    Question: ${question}
-
-    Categorized themes:
-    ${categories}
-
-    Produce a thematic summary per category identifying emerging patterns. Then write a 2-3 paragraph executive synthesis for HR leadership that maps the landscape of themes discovered, highlights the most prominent signals, and suggests areas for deeper investigation. Stay grounded in the data — no invented insights.`
-
-    :
-    `You are a PhD Analyst performing thematic summarization for a sentiment HR question.
-
-    Question: ${question}
-
-    Categorized themes:
-    ${categories}
-
-    Produce a thematic summary per category and a 2-3 paragraph executive synthesis for HR leadership. Stay grounded in the data — no invented insights.`
+Rules:
+- Output ONLY the JSON object — no markdown, no code fences, no commentary.
+- Lead with the conclusion: criticalFindings and topPriorities are the most important output.
+- Provide 2-4 topPriorities, most urgent first.
+- Include one category per theme above, using the same names.
+- evidence[].originalComment MUST be copied exactly from the numbered original responses — never paraphrase, invent, or use extracted keywords. Include 1-3 representative quotes per category.
+- Every insight must trace back to the data. No invented findings.`
 
     const summary = await client.messages.create({
     model: 'claude-sonnet-4-5',
-    max_tokens: 1000,
-    messages: [{ role: 'user', content: prompt3Content }]
+    max_tokens: 3000,
+    messages: [{ role: 'user', content: synthesisPrompt }]
     })
 
-    const executiveSummary = summary.content[0].type === 'text' ? summary.content[0].text : ''
+    const synthesisText = summary.content[0].type === 'text' ? summary.content[0].text : ''
+
+    // Parse the model's JSON defensively; the widest brace pair tolerates any
+    // stray prose or code fences. null => couldn't parse.
+    const extractJson = (s: string): any | null => {
+      const start = s.indexOf('{')
+      const end = s.lastIndexOf('}')
+      if (start === -1 || end === -1 || end < start) return null
+      try { return JSON.parse(s.slice(start, end + 1)) } catch { return null }
+    }
+    const llm = extractJson(synthesisText)
+
+    // Per-category sentiment comes from the SAME shared computation the charts
+    // use (parseThemes) — never from the model — so the numbers can't drift.
+    const themes = parseThemes(categories)
+    const norm = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+    const llmCats: any[] = llm && Array.isArray(llm.categories) ? llm.categories : []
+    const mergedCategories = themes.map(t => {
+      const match = llmCats.find(c => c && norm(c.name) === norm(t.name)) || {}
+      const evidence = Array.isArray(match.evidence)
+        ? match.evidence
+            .filter((e: any) => e && typeof e.originalComment === 'string' && e.originalComment.trim())
+            .map((e: any) => ({ originalComment: e.originalComment, tag: typeof e.tag === 'string' ? e.tag : '' }))
+            .slice(0, 3)
+        : []
+      return {
+        name: t.name,
+        sentiment: { positive: t.positive, negative: t.negative, neutral: t.neutral },
+        narrative: typeof match.narrative === 'string' ? match.narrative : '',
+        strategicPriority: typeof match.strategicPriority === 'string' ? match.strategicPriority : '',
+        evidence,
+      }
+    })
+
+    const validUrgency = (u: any) => (['high', 'medium', 'low'].includes(u) ? u : 'medium')
+    const synthesis = {
+      criticalFindings: {
+        headline: typeof llm?.criticalFindings?.headline === 'string' && llm.criticalFindings.headline.trim()
+          ? llm.criticalFindings.headline
+          : 'Executive summary',
+        summary: typeof llm?.criticalFindings?.summary === 'string' ? llm.criticalFindings.summary : '',
+      },
+      topPriorities: llm && Array.isArray(llm.topPriorities)
+        ? llm.topPriorities
+            .filter((p: any) => p && typeof p.priority === 'string' && p.priority.trim())
+            .map((p: any) => ({
+              priority: p.priority,
+              urgency: validUrgency(p.urgency),
+              relatedCategory: typeof p.relatedCategory === 'string' ? p.relatedCategory : '',
+            }))
+            .slice(0, 4)
+        : [],
+      categories: mergedCategories,
+    }
+
+    // Store structured JSON when parsing succeeded; otherwise keep the raw text
+    // as a legacy string the dashboard can still render.
+    const executiveSummary = llm ? JSON.stringify(synthesis) : synthesisText
+    // Short readable text for the /analyze pipeline animation only.
+    const summaryPreview = synthesis.criticalFindings.summary || synthesisText
     
     const tokenEstimate = responses.length * 150
     const costEstimate = (tokenEstimate * 3 * 0.000015).toFixed(4)
@@ -221,7 +275,7 @@ Instructions:
     question_type: questionType
     })
 
-    return NextResponse.json({ codes, categories, executiveSummary, costEstimate, responseCount: responses.length, questionType })
+    return NextResponse.json({ codes, categories, executiveSummary: summaryPreview, costEstimate, responseCount: responses.length, questionType })
 
 } catch (error) {
     console.error(error)
