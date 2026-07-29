@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { parseThemes, getSentimentCounts, isFlaggedTheme, parseSynthesis } from '@/lib/themes'
+import type { Theme, Synthesis } from '@/lib/themes'
 
 interface Analysis {
   id: string
@@ -16,97 +18,118 @@ interface Analysis {
   created_at: string
 }
 
-interface Theme {
-  name: string
-  positive: number
-  negative: number
-  neutral: number
-  total: number
-}
-
-const parseThemes = (categories: string): Theme[] => {
-  const themes: Theme[] = []
-  const categoryBlocks = categories.split(/Category:|##\s+Category:/).filter(b => b.trim())
-  
-  categoryBlocks.forEach(block => {
-    const lines = block.split('\n').filter(l => l.trim())
-    if (!lines.length) return
-    const name = lines[0].replace(/[#*]/g, '').trim()
-    if (!name || name.length > 60) return
-    
-    let pos = 0, neg = 0, neu = 0
-
-    // Sentiment format
-    const sentimentMatch = block.match(/Positive:\s*(\d+).*Negative:\s*(\d+).*Neutral:\s*(\d+)/i)
-    // Strategic format
-    const strategicMatch = block.match(/Opportunities:\s*(\d+).*Blockers:\s*(\d+).*Considerations:\s*(\d+)/i)
-    // Process format
-    const processMatch = block.match(/Working Well:\s*(\d+).*Needs Improvement:\s*(\d+).*Unclear:\s*(\d+)/i)
-    // Exploration format
-    const explorationMatch = block.match(/Prominent:\s*(\d+).*Emerging:\s*(\d+).*Peripheral:\s*(\d+)/i)
-
-    if (sentimentMatch) {
-      pos = parseInt(sentimentMatch[1])
-      neg = parseInt(sentimentMatch[2])
-      neu = parseInt(sentimentMatch[3])
-    } else if (strategicMatch) {
-      pos = parseInt(strategicMatch[1])
-      neg = parseInt(strategicMatch[2])
-      neu = parseInt(strategicMatch[3])
-    } else if (processMatch) {
-      pos = parseInt(processMatch[1])
-      neg = parseInt(processMatch[2])
-      neu = parseInt(processMatch[3])
-    } else if (explorationMatch) {
-      pos = parseInt(explorationMatch[1])
-      neg = parseInt(explorationMatch[2])
-      neu = parseInt(explorationMatch[3])
-    } else {
-      // Fallback — count keywords in block
-      block.split('\n').forEach(line => {
-        if (/positive|opportunity|working well|prominent/i.test(line)) pos++
-        if (/negative|blocker|needs improvement|emerging/i.test(line)) neg++
-        if (/neutral|consideration|unclear|peripheral/i.test(line)) neu++
-      })
-    }
-
-    if (pos + neg + neu > 0) {
-      themes.push({ name, positive: pos, negative: neg, neutral: neu, total: pos + neg + neu })
-    }
-  })
-  
-  return themes.sort((a, b) => b.total - a.total)
-}
-
-const getSentimentCounts = (categories: string, questionType: string = 'sentiment') => {
-  if (questionType === 'strategic') {
-    const opportunities = (categories.match(/Opportunity/g) || []).length
-    const blockers = (categories.match(/Blocker/g) || []).length
-    const considerations = (categories.match(/Consideration/g) || []).length
-    return { pos: opportunities, neg: blockers, neu: considerations }
-  } else if (questionType === 'process') {
-    const working = (categories.match(/Working Well/g) || []).length
-    const needs = (categories.match(/Needs Improvement/g) || []).length
-    const unclear = (categories.match(/Unclear/g) || []).length
-    return { pos: working, neg: needs, neu: unclear }
-  } else if (questionType === 'exploration') {
-    const prominent = (categories.match(/Prominent/g) || []).length
-    const emerging = (categories.match(/Emerging/g) || []).length
-    const peripheral = (categories.match(/Peripheral/g) || []).length
-    return { pos: prominent, neg: emerging, neu: peripheral }
-  }
-  const themes = parseThemes(categories)
-  return themes.reduce((acc, t) => ({
-    pos: acc.pos + t.positive,
-    neg: acc.neg + t.negative,
-    neu: acc.neu + t.neutral
-  }), { pos: 0, neg: 0, neu: 0 })
-}
-
 const GREEN = '#7db87a'
 const RED = '#e07070'
 const AMBER = '#e0b870'
 const MUTED = '#7a7870'
+
+// Segmented positive / negative / neutral mini-bar. Single component reused by
+// the Theme Map and every category card so the split always reads the same way.
+function SentimentBar({ positive, negative, neutral, showText = false }: {
+  positive: number; negative: number; neutral: number; showText?: boolean
+}) {
+  const total = positive + negative + neutral
+  const pct = (v: number) => (total > 0 ? (v / total) * 100 : 0)
+  return (
+    <div>
+      <div className="sbar">
+        {positive > 0 && <div style={{ width: `${pct(positive)}%`, background: GREEN }} title={`${positive} positive`} />}
+        {negative > 0 && <div style={{ width: `${pct(negative)}%`, background: RED }} title={`${negative} negative`} />}
+        {neutral > 0 && <div style={{ width: `${pct(neutral)}%`, background: AMBER }} title={`${neutral} neutral`} />}
+      </div>
+      {showText && (
+        <div className="sbar-legend">
+          {positive > 0 && <span style={{ color: GREEN }}>{positive} positive</span>}
+          {negative > 0 && <span style={{ color: RED }}>{negative} negative</span>}
+          {neutral > 0 && <span style={{ color: AMBER }}>{neutral} neutral</span>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Designed executive report — Critical Findings first, then Top Priorities,
+// then per-category cards (reusing SentimentBar), then a collapsed evidence
+// appendix that quotes the real original comments.
+function ReportView({ synthesis, categoriesRaw, codesRaw }: {
+  synthesis: Synthesis; categoriesRaw: string; codesRaw: string
+}) {
+  return (
+    <>
+      <div className="report-section report-critical">
+        <div className="result-title">Critical findings</div>
+        <h3 className="report-headline">{synthesis.criticalFindings.headline}</h3>
+        {synthesis.criticalFindings.summary && (
+          <p className="report-body">{synthesis.criticalFindings.summary}</p>
+        )}
+      </div>
+
+      {synthesis.topPriorities.length > 0 && (
+        <div className="report-section">
+          <div className="result-title">Top priorities</div>
+          <div className="priority-list">
+            {synthesis.topPriorities.map((p, i) => (
+              <div key={i} className="priority-item">
+                <span className={`urgency-dot urgency-${p.urgency}`} />
+                <div className="priority-text">
+                  <div className="priority-main">{p.priority}</div>
+                  {p.relatedCategory && <div className="priority-cat">{p.relatedCategory}</div>}
+                </div>
+                <span className={`urgency-badge urgency-${p.urgency}`}>{p.urgency}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {synthesis.categories.length > 0 && (
+        <>
+          <div className="result-title" style={{ margin: '4px 0 4px' }}>Category breakdown</div>
+          {synthesis.categories.map((c, i) => (
+            <div key={i} className="report-section category-card">
+              <div className="category-name">{c.name}</div>
+              <SentimentBar positive={c.sentiment.positive} negative={c.sentiment.negative} neutral={c.sentiment.neutral} showText />
+              {c.narrative && <p className="report-body" style={{ marginTop: '12px' }}>{c.narrative}</p>}
+              {c.strategicPriority && (
+                <div className="priority-callout">
+                  <div className="priority-callout-label">Strategic priority</div>
+                  <div className="priority-callout-text">{c.strategicPriority}</div>
+                </div>
+              )}
+            </div>
+          ))}
+        </>
+      )}
+
+      <details className="evidence-appendix">
+        <summary className="evidence-summary">Themes &amp; sentiment — evidence appendix</summary>
+        <div className="evidence-body">
+          {synthesis.categories.map((c, i) => (
+            c.evidence.length > 0 ? (
+              <div key={i} className="evidence-group">
+                <div className="evidence-cat">{c.name}</div>
+                {c.evidence.map((e, j) => (
+                  <blockquote key={j} className="evidence-quote">
+                    <span className="evidence-text">“{e.originalComment}”</span>
+                    {e.tag && <span className="evidence-tag">{e.tag}</span>}
+                  </blockquote>
+                ))}
+              </div>
+            ) : null
+          ))}
+          <div className="evidence-group">
+            <div className="evidence-cat">Full categorization</div>
+            <div className="result-content">{categoriesRaw}</div>
+          </div>
+          <div className="evidence-group">
+            <div className="evidence-cat">Qualitative codes</div>
+            <div className="result-content">{codesRaw}</div>
+          </div>
+        </div>
+      </details>
+    </>
+  )
+}
 
 export default function DashboardPage() {
   const [analyses, setAnalyses] = useState<Analysis[]>([])
@@ -130,138 +153,121 @@ export default function DashboardPage() {
   })
 
   const exportPDF = async (analysis: Analysis) => {
-    const cleanText = (text: string) => text
-        .replace(/#{1,3}\s/g, '')
-        .replace(/\*\*/g, '')
-        .replace(/\*/g, '')
-        .replace(/→/g, '->')
-        .replace(/---/g, '')
-        .replace(/^\s*[-•]\s/gm, '• ')
-        .trim()
     const { jsPDF } = await import('jspdf')
     const doc = new jsPDF()
 
     const green = [125, 184, 122] as [number, number, number]
     const dark = [26, 26, 26] as [number, number, number]
     const muted = [120, 120, 112] as [number, number, number]
+    const red = [200, 80, 80] as [number, number, number]
+    const amber = [180, 140, 60] as [number, number, number]
+    const BOTTOM = 278
 
     let y = 20
 
-    doc.setFontSize(22)
-    doc.setTextColor(...green)
-    doc.setFont('helvetica', 'bold')
-    doc.text('QUALAI', 20, y)
+    // Wrapped, page-breaking text run.
+    const run = (
+      text: string,
+      opts: { size?: number; style?: 'normal' | 'bold' | 'italic'; color?: [number, number, number]; indent?: number; gap?: number; width?: number } = {}
+    ) => {
+      if (!text) return
+      const { size = 10, style = 'normal', color = dark, indent = 20, gap = 5.5, width = 170 } = opts
+      doc.setFontSize(size)
+      doc.setFont('helvetica', style)
+      doc.setTextColor(...color)
+      const lines = doc.splitTextToSize(text, width) as string[]
+      lines.forEach(line => {
+        if (y > BOTTOM) { doc.addPage(); y = 20 }
+        doc.text(line, indent, y)
+        y += gap
+      })
+    }
+    const heading = (text: string) => {
+      y += 6
+      if (y > BOTTOM - 8) { doc.addPage(); y = 20 }
+      doc.setFontSize(13)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(...green)
+      doc.text(text, 20, y)
+      y += 7
+    }
+    const divider = () => { doc.setDrawColor(...green); doc.setLineWidth(0.3); doc.line(20, y, 190, y); y += 8 }
 
-    y += 8
-    doc.setFontSize(10)
-    doc.setTextColor(...muted)
-    doc.setFont('helvetica', 'normal')
-    doc.text('Qualitative Analysis Report', 20, y)
+    // Header
+    doc.setFontSize(22); doc.setTextColor(...green); doc.setFont('helvetica', 'bold')
+    doc.text('QUALAI', 20, y); y += 8
+    run('Qualitative Analysis Report', { color: muted })
+    run(formatDate(analysis.created_at), { color: muted })
+    y += 2; divider()
 
-    y += 6
-    doc.text(formatDate(analysis.created_at), 20, y)
-
-    y += 8
-    doc.setDrawColor(...green)
-    doc.setLineWidth(0.3)
-    doc.line(20, y, 190, y)
-
-    y += 10
-    doc.setFontSize(13)
-    doc.setTextColor(...dark)
-    doc.setFont('helvetica', 'bold')
-    doc.text('Survey Question', 20, y)
-
-    y += 7
-    doc.setFontSize(11)
-    doc.setFont('helvetica', 'normal')
-    const questionLines = doc.splitTextToSize(analysis.question, 170)
-    doc.text(questionLines, 20, y)
-    y += questionLines.length * 6 + 6
-
+    // Question + stats
+    heading('Survey Question')
+    run(analysis.question, { size: 11 })
+    y += 2
     const { pos, neg, neu } = getSentimentCounts(analysis.categories, analysis.question_type)
     const total = pos + neg + neu
     const ratio = total > 0 ? Math.round((pos / total) * 100) : 0
+    run(`Responses analyzed: ${analysis.response_count}`, { color: muted })
+    run(`Positive: ${pos}   |   Negative: ${neg}   |   Neutral: ${neu}   |   Positive ratio: ${ratio}%`, { color: muted })
+    y += 2; divider()
 
-    doc.setFontSize(10)
-    doc.setTextColor(...muted)
-    doc.text(`Responses analyzed: ${analysis.response_count}`, 20, y)
-    y += 5.5
+    const synthesis = parseSynthesis(analysis.executive_summary)
 
-    const label1 = analysis.question_type === 'strategic' ? 'Opportunity signals' 
-    : analysis.question_type === 'process' ? 'Working well'
-    : analysis.question_type === 'exploration' ? 'Prominent themes'
-    : 'Positive codes'
+    if (synthesis) {
+      // Critical Findings — FIRST, so leadership gets the conclusion up top.
+      heading('Critical Findings')
+      run(synthesis.criticalFindings.headline, { size: 12, style: 'bold' })
+      y += 1
+      run(synthesis.criticalFindings.summary)
 
-    const label2 = analysis.question_type === 'strategic' ? 'Pain points'
-    : analysis.question_type === 'process' ? 'Needs improvement'
-    : analysis.question_type === 'exploration' ? 'Emerging themes'
-    : 'Negative codes'
+      if (synthesis.topPriorities.length > 0) {
+        heading('Top Priorities')
+        synthesis.topPriorities.forEach((p, i) => {
+          const uColor = p.urgency === 'high' ? red : p.urgency === 'medium' ? amber : green
+          run(`${i + 1}. [${p.urgency.toUpperCase()}] ${p.priority}`, { style: 'bold', color: uColor })
+          if (p.relatedCategory) run(`Related theme: ${p.relatedCategory}`, { size: 9, color: muted, indent: 26 })
+          y += 1
+        })
+      }
 
-    const label3 = analysis.question_type === 'strategic' ? 'Considerations'
-    : analysis.question_type === 'process' ? 'Unclear signals'
-    : analysis.question_type === 'exploration' ? 'Peripheral themes'
-    : 'Neutral codes'
+      heading('Category Breakdown')
+      synthesis.categories.forEach(c => {
+        const s = c.sentiment
+        run(c.name, { size: 11, style: 'bold' })
+        run(`${s.positive} positive  |  ${s.negative} negative  |  ${s.neutral} neutral`, { size: 9, color: muted })
+        if (c.narrative) run(c.narrative)
+        if (c.strategicPriority) run(`Strategic priority: ${c.strategicPriority}`, { style: 'italic', color: green })
+        y += 3
+      })
 
-    const ratioLabel = analysis.question_type === 'strategic' ? 'Opportunity ratio'
-    : analysis.question_type === 'process' ? 'Satisfaction rate'
-    : 'Positive ratio'
-
-    doc.text(`${label1}: ${pos}   |   ${label2}: ${neg}   |   ${label3}: ${neu}`, 20, y)
-    y += 5.5
-    doc.text(`${ratioLabel}: ${ratio}%   |   Avg codes per response: ${(total / analysis.response_count).toFixed(1)}`, 20, y)
-    y += 5.5
-
-    const themes = parseThemes(analysis.categories)
-    if (themes.length > 0) {
-    doc.text(`Top theme: ${themes[0].name}   |   Total themes identified: ${themes.length}`, 20, y)
-    y += 5.5
+      // Evidence appendix — real original comments, so every insight is traceable.
+      heading('Evidence & Sourcing')
+      synthesis.categories.forEach(c => {
+        if (!c.evidence.length) return
+        run(c.name, { size: 10, style: 'bold' })
+        c.evidence.forEach(e => {
+          run(`"${e.originalComment}"${e.tag ? '  — ' + e.tag : ''}`, { size: 9, style: 'italic', color: muted, indent: 24, width: 166 })
+        })
+        y += 2
+      })
+    } else {
+      // Legacy analyses stored markdown — strip syntax and render as before.
+      const cleanText = (text: string) => text
+        .replace(/#{1,3}\s/g, '').replace(/\*\*/g, '').replace(/\*/g, '')
+        .replace(/→/g, '->').replace(/---/g, '').replace(/^\s*[-•]\s/gm, '• ').trim()
+      heading('Executive Summary')
+      run(cleanText(analysis.executive_summary || ''))
+      heading('Themes & Sentiment')
+      run(cleanText(analysis.categories || ''))
     }
-
-    y += 8
-    doc.line(20, y, 190, y)
-
-    y += 10
-    doc.setFontSize(13)
-    doc.setTextColor(...green)
-    doc.setFont('helvetica', 'bold')
-    doc.text('Executive Summary', 20, y)
-
-    y += 7
-    doc.setFontSize(10)
-    doc.setTextColor(...dark)
-    doc.setFont('helvetica', 'normal')
-    const summaryLines = doc.splitTextToSize(cleanText(analysis.executive_summary), 170)
-    summaryLines.forEach((line: string) => {
-      if (y > 270) { doc.addPage(); y = 20 }
-      doc.text(line, 20, y)
-      y += 5.5
-    })
-
-    y += 6
-    if (y > 260) { doc.addPage(); y = 20 }
-    doc.setFontSize(13)
-    doc.setTextColor(...green)
-    doc.setFont('helvetica', 'bold')
-    doc.text('Themes & Sentiment', 20, y)
-
-    y += 7
-    doc.setFontSize(10)
-    doc.setTextColor(...dark)
-    doc.setFont('helvetica', 'normal')
-    const categoryLines = doc.splitTextToSize(cleanText(analysis.categories), 170)
-    categoryLines.forEach((line: string) => {
-      if (y > 270) { doc.addPage(); y = 20 }
-      doc.text(line, 20, y)
-      y += 5.5
-    })
 
     const pageCount = doc.getNumberOfPages()
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i)
       doc.setFontSize(8)
       doc.setTextColor(...muted)
-      doc.text('Generated by Qualai — qualai.vercel.app', 20, 290)
+      doc.setFont('helvetica', 'normal')
+      doc.text('Generated by Qualai — qualai.xyz', 20, 290)
       doc.text(`Page ${i} of ${pageCount}`, 170, 290)
     }
 
@@ -319,6 +325,57 @@ export default function DashboardPage() {
         .new-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--green); color: #0e0f0d; border: none; padding: 10px 20px; font-family: var(--font-sans), sans-serif; font-weight: 600; font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 6px; cursor: pointer; text-decoration: none; transition: background 0.2s; margin-top: 16px; }
         .new-btn:hover { background: #8ec98b; }
         .custom-tooltip { background: #1e2018; border: 1px solid rgba(125,184,122,0.2); border-radius: 6px; padding: 8px 12px; font-size: 11px; color: var(--text); font-family: var(--font-mono), monospace; }
+
+        /* Segmented sentiment mini-bar (shared: Theme Map + report cards) */
+        .sbar { display: flex; height: 8px; border-radius: 99px; overflow: hidden; background: var(--border); }
+        .sbar-legend { display: flex; gap: 12px; margin-top: 6px; font-family: var(--font-mono), monospace; font-size: 11px; }
+
+        /* Theme Map — neutral tiles with a sentiment mini-bar (no dominant color) */
+        .theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+        .theme-tile { border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; background: rgba(125,184,122,0.03); }
+        .theme-tile-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+        .theme-tile-name { font-family: var(--font-sans), sans-serif; font-weight: 600; font-size: 13px; color: var(--text); line-height: 1.3; }
+        .theme-tile-count { font-family: var(--font-mono), monospace; font-size: 12px; color: var(--muted); flex-shrink: 0; }
+        .flagged-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border); }
+        .flagged-tile { display: inline-flex; align-items: center; gap: 8px; border: 1px dashed var(--amber); border-radius: 8px; padding: 8px 14px; background: rgba(224,184,112,0.06); }
+        .flagged-icon { color: var(--amber); font-size: 13px; }
+        .flagged-name { font-family: var(--font-sans), sans-serif; font-weight: 600; font-size: 12px; color: var(--amber); }
+        .flagged-count { font-family: var(--font-mono), monospace; font-size: 12px; color: var(--muted); }
+
+        /* Designed executive report */
+        .report-section { border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 16px; background: var(--surface); }
+        .report-critical { border-color: var(--green-dim); background: rgba(125,184,122,0.05); }
+        .report-headline { font-family: var(--font-sans), sans-serif; font-weight: 700; letter-spacing: -0.01em; font-size: 20px; color: var(--text); line-height: 1.3; margin-bottom: 10px; }
+        .report-body { font-family: var(--font-mono), monospace; font-size: 13px; color: var(--text); line-height: 1.8; font-weight: 400; }
+        .priority-list { display: flex; flex-direction: column; gap: 10px; }
+        .priority-item { display: flex; align-items: center; gap: 12px; border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+        .priority-text { flex: 1; }
+        .priority-main { font-family: var(--font-sans), sans-serif; font-weight: 500; font-size: 13px; color: var(--text); line-height: 1.4; }
+        .priority-cat { font-family: var(--font-mono), monospace; font-size: 11px; color: var(--muted); margin-top: 3px; }
+        .urgency-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .urgency-badge { font-family: var(--font-sans), sans-serif; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; padding: 3px 8px; border-radius: 99px; flex-shrink: 0; }
+        .urgency-high { }
+        .urgency-dot.urgency-high { background: var(--red); }
+        .urgency-badge.urgency-high { color: var(--red); background: rgba(224,112,112,0.14); }
+        .urgency-dot.urgency-medium { background: var(--amber); }
+        .urgency-badge.urgency-medium { color: var(--amber); background: rgba(224,184,112,0.14); }
+        .urgency-dot.urgency-low { background: var(--green); }
+        .urgency-badge.urgency-low { color: var(--green); background: rgba(125,184,122,0.14); }
+        .category-card .category-name { font-family: var(--font-sans), sans-serif; font-weight: 600; font-size: 14px; color: var(--text); margin-bottom: 12px; }
+        .priority-callout { margin-top: 14px; border-left: 2px solid var(--green); background: rgba(125,184,122,0.06); border-radius: 0 8px 8px 0; padding: 10px 14px; }
+        .priority-callout-label { font-family: var(--font-sans), sans-serif; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--green); margin-bottom: 4px; }
+        .priority-callout-text { font-family: var(--font-mono), monospace; font-size: 12.5px; color: var(--text); line-height: 1.6; }
+        .evidence-appendix { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin-bottom: 16px; }
+        .evidence-summary { font-family: var(--font-sans), sans-serif; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--green); padding: 16px 20px; cursor: pointer; list-style: none; }
+        .evidence-summary::-webkit-details-marker { display: none; }
+        .evidence-summary::before { content: '▸ '; color: var(--muted); }
+        details[open] .evidence-summary::before { content: '▾ '; }
+        .evidence-body { padding: 0 20px 20px; display: flex; flex-direction: column; gap: 18px; }
+        .evidence-group { display: flex; flex-direction: column; gap: 8px; }
+        .evidence-cat { font-family: var(--font-sans), sans-serif; font-weight: 600; font-size: 12px; color: var(--text); }
+        .evidence-quote { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; border-left: 2px solid var(--green-dim); padding: 8px 12px; margin: 0; background: rgba(125,184,122,0.04); border-radius: 0 6px 6px 0; }
+        .evidence-text { font-family: var(--font-mono), monospace; font-size: 12px; color: var(--text); line-height: 1.6; font-style: italic; }
+        .evidence-tag { font-family: var(--font-mono), monospace; font-size: 10px; color: var(--muted); white-space: nowrap; flex-shrink: 0; padding-top: 2px; }
 
         @media (max-width: 768px) {
         .page { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr; }
@@ -402,7 +459,14 @@ export default function DashboardPage() {
               Neutral: t.neutral
             }))
 
-            const maxTotal = Math.max(...themes.map(t => t.total))
+            // Theme Map reuses the SAME `themes` the Theme Frequency chart uses.
+            // Flagged-for-Review is a triage bucket, not a sentiment theme —
+            // pull it out so it isn't shown as a coloured sentiment tile.
+            const sentimentThemes = themes.filter(t => !isFlaggedTheme(t.name))
+            const flaggedThemes = themes.filter(t => isFlaggedTheme(t.name))
+
+            // Structured synthesis when available; null => legacy markdown blob.
+            const synthesis = parseSynthesis(selected.executive_summary)
 
             return (
               <>
@@ -528,45 +592,48 @@ export default function DashboardPage() {
 
                 <div className="bubble-map">
                   <div className="chart-title">Theme map</div>
-                  <div className="bubbles">
-                    {themes.map((t, i) => {
-                      const size = 0.6 + (t.total / maxTotal) * 0.8
-                      const dominantSentiment = t.positive >= t.negative && t.positive >= t.neutral ? 'positive'
-                        : t.negative >= t.positive && t.negative >= t.neutral ? 'negative' : 'neutral'
-                      const bg = dominantSentiment === 'positive' ? 'rgba(125,184,122,0.12)'
-                        : dominantSentiment === 'negative' ? 'rgba(224,112,112,0.12)' : 'rgba(224,184,112,0.12)'
-                      const border = dominantSentiment === 'positive' ? 'rgba(125,184,122,0.3)'
-                        : dominantSentiment === 'negative' ? 'rgba(224,112,112,0.3)' : 'rgba(224,184,112,0.3)'
-                      const color = dominantSentiment === 'positive' ? GREEN
-                        : dominantSentiment === 'negative' ? RED : AMBER
-                      return (
-                        <div key={i} className="bubble" style={{
-                          background: bg,
-                          border: `1px solid ${border}`,
-                          color,
-                          fontSize: `${10 + (t.total / maxTotal) * 6}px`,
-                          padding: `${6 + (t.total / maxTotal) * 8}px ${12 + (t.total / maxTotal) * 12}px`
-                        }}>
-                          {t.name}
-                          <span style={{marginLeft:'6px',opacity:0.6,fontSize:'10px'}}>({t.total})</span>
+                  <div className="theme-grid">
+                    {sentimentThemes.map((t, i) => (
+                      <div key={i} className="theme-tile">
+                        <div className="theme-tile-head">
+                          <span className="theme-tile-name">{t.name}</span>
+                          <span className="theme-tile-count">{t.total}</span>
                         </div>
-                      )
-                    })}
+                        <SentimentBar positive={t.positive} negative={t.negative} neutral={t.neutral} showText />
+                      </div>
+                    ))}
                   </div>
+                  {flaggedThemes.length > 0 && (
+                    <div className="flagged-row">
+                      {flaggedThemes.map((t, i) => (
+                        <div key={i} className="flagged-tile">
+                          <span className="flagged-icon">⚑</span>
+                          <span className="flagged-name">Flagged for review</span>
+                          <span className="flagged-count">{t.total}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                <div className="result-section">
-                  <div className="result-title">Executive summary</div>
-                  <div className="result-content">{selected.executive_summary}</div>
-                </div>
-                <div className="result-section">
-                  <div className="result-title">Themes & sentiment</div>
-                  <div className="result-content">{selected.categories}</div>
-                </div>
-                <div className="result-section">
-                  <div className="result-title">Qualitative codes</div>
-                  <div className="result-content">{selected.codes}</div>
-                </div>
+                {synthesis ? (
+                  <ReportView synthesis={synthesis} categoriesRaw={selected.categories} codesRaw={selected.codes} />
+                ) : (
+                  <>
+                    <div className="result-section">
+                      <div className="result-title">Executive summary</div>
+                      <div className="result-content">{selected.executive_summary}</div>
+                    </div>
+                    <div className="result-section">
+                      <div className="result-title">Themes & sentiment</div>
+                      <div className="result-content">{selected.categories}</div>
+                    </div>
+                    <div className="result-section">
+                      <div className="result-title">Qualitative codes</div>
+                      <div className="result-content">{selected.codes}</div>
+                    </div>
+                  </>
+                )}
               </>
             )
           })()}
