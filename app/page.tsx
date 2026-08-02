@@ -810,7 +810,7 @@ export default function Home() {
             }}>
               Connect on LinkedIn
             </a>
-            <a href="mailto:sroaviertel@gmail.com,sebasroavi@gmail.com" style={{
+            <a href="mailto:sebasroavi@gmail.com" style={{
               display:'inline-flex', alignItems:'center', gap:'6px',
               background:'transparent', color:'var(--text)',
               border:'1px solid var(--border)',
