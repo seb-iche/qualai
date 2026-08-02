@@ -27,14 +27,86 @@ function VNode({ cx, cy, variant, title, sub }: {
 // through an ASCII pipeline, and organize into a structured geometric shape.
 // This is the product's core motion rendered in the "coded data" voice:
 // unstructured open text becomes coded, structured signal.
-// Hero engine diagram — open-text input enters a "black box" that opens to
-// reveal a pipeline routing in different directions (like real pipes) and
-// exits as one structured output.
-const ENG_PATHS = [
-  'M110,140 L205,140 L205,72 L515,72 L515,140 L610,140',   // routes up and over
-  'M110,140 L610,140',                                       // straight through
-  'M110,140 L205,140 L205,208 L515,208 L515,140 L610,140',  // routes down and under
-]
+// The 4-stage pipeline as a neural network: 6 layers of nodes joined by a
+// sparse, weighted net. Geometry + edges + pulses are computed once,
+// deterministically (seeded), so SSR and client render identically and only
+// pulse transforms change on scroll.
+const NN_VB_W = 720
+const NN_VB_H = 300
+const NN_LAYERS = [
+  { label: 'OPEN TEXT', count: 3, kind: 'input' },
+  { label: 'DETECTION', count: 3, kind: 'mid' },
+  { label: 'CODING', count: 4, kind: 'mid' },
+  { label: 'CATEGORIZE', count: 4, kind: 'mid' },
+  { label: 'SYNTHESIS', count: 3, kind: 'mid' },
+  { label: 'STRUCTURED', count: 3, kind: 'output' },
+] as const
+
+function nnRand(seed: number) {
+  return function () {
+    seed |= 0
+    seed = (seed + 0x6d2b79f5) | 0
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+interface NNEdge { x1: number; y1: number; x2: number; y2: number; layer: number; opacity: number; width: number }
+interface NNPulse { x1: number; y1: number; x2: number; y2: number; phase: number }
+
+const NN_GEO = (() => {
+  const rnd = nnRand(11)
+  const cols = NN_LAYERS.length
+  const padX = 64
+  const cy = 130
+  const vGap = 44
+  const colX = (i: number) => padX + (i * (NN_VB_W - 2 * padX)) / (cols - 1)
+  const nodeY = (count: number, j: number) => cy + (j - (count - 1) / 2) * vGap
+  const nodes = NN_LAYERS.map((L, li) =>
+    Array.from({ length: L.count }, (_, j) => ({ x: colX(li), y: nodeY(L.count, j) }))
+  )
+
+  const edges: NNEdge[] = []
+  for (let li = 0; li < cols - 1; li++) {
+    const src = nodes[li]
+    const dst = nodes[li + 1]
+    const incoming = new Array(dst.length).fill(0)
+    src.forEach(s => {
+      // connect to the 2–3 vertically nearest targets (+ jitter) — sparse net
+      const order = dst
+        .map((d, di) => ({ di, dist: Math.abs(d.y - s.y) + rnd() * 34 }))
+        .sort((a, b) => a.dist - b.dist)
+      const k = rnd() > 0.5 ? 3 : 2
+      order.slice(0, Math.min(k, dst.length)).forEach(({ di }) => {
+        incoming[di]++
+        edges.push({
+          x1: s.x, y1: s.y, x2: dst[di].x, y2: dst[di].y, layer: li,
+          opacity: 0.13 + rnd() * 0.27, width: 0.8 + rnd() * 1.1,
+        })
+      })
+    })
+    // guarantee every destination has at least one incoming edge
+    incoming.forEach((n, di) => {
+      if (n > 0) return
+      const s = src.reduce((best, cur) =>
+        Math.abs(cur.y - dst[di].y) < Math.abs(best.y - dst[di].y) ? cur : best, src[0])
+      edges.push({ x1: s.x, y1: s.y, x2: dst[di].x, y2: dst[di].y, layer: li, opacity: 0.22, width: 1 })
+    })
+  }
+
+  // Two staggered pulses per edge; a per-layer offset makes the flow read as a
+  // left→right wave rather than every edge pulsing in lockstep.
+  const PER_EDGE = 2
+  const pulses: NNPulse[] = edges.flatMap((e, ei) =>
+    Array.from({ length: PER_EDGE }, (_, k) => ({
+      x1: e.x1, y1: e.y1, x2: e.x2, y2: e.y2,
+      phase: k / PER_EDGE + e.layer * 0.16 + (ei % 3) * 0.05,
+    }))
+  )
+
+  return { nodes, edges, pulses }
+})()
 
 function EngineDiagram() {
   const svgRef = useRef<SVGSVGElement>(null)
@@ -42,36 +114,27 @@ function EngineDiagram() {
   useEffect(() => {
     const svg = svgRef.current
     if (!svg) return
-    const dots = Array.from(svg.querySelectorAll<SVGCircleElement>('.eng-flow'))
+    // Reduced motion: leave a clean static net, no pulses (CSS hides them).
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
-    // Open the box when the diagram scrolls into view.
-    const io = new IntersectionObserver(
-      entries => entries.forEach(e => { if (e.isIntersecting) svg.classList.add('open') }),
-      { threshold: 0.35 }
-    )
-    io.observe(svg)
-
-    const setDot = (d: SVGCircleElement, dist: number) =>
-      d.style.setProperty('offset-distance', `${(dist * 100).toFixed(2)}%`)
-
-    // Reduced motion: place packets statically, don't tie them to scroll.
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      dots.forEach(d => setDot(d, parseFloat(d.dataset.phase || '0')))
-      return () => io.disconnect()
-    }
-
-    // Otherwise the packets advance along the pipes as the page is scrolled —
-    // forward on scroll down, backward on scroll up.
-    const SPEED = 2.4
+    const els = Array.from(svg.querySelectorAll<SVGCircleElement>('.nn-pulse'))
+    const P = NN_GEO.pulses
+    const SPEED = 1.3
     let raf = 0
     const update = () => {
       raf = 0
       const rect = svg.getBoundingClientRect()
       const vh = window.innerHeight || 1
+      // 0 as the section enters the viewport, 1 as it leaves — scrubbable, and
+      // reverses when scrolling back up.
       const p = Math.max(0, Math.min(1, (vh - rect.top) / (vh + rect.height)))
-      for (const d of dots) {
-        const phase = parseFloat(d.dataset.phase || '0')
-        setDot(d, (((p * SPEED + phase) % 1) + 1) % 1)
+      for (let i = 0; i < els.length; i++) {
+        const pu = P[i]
+        const t = (((p * SPEED + pu.phase) % 1) + 1) % 1
+        const dx = (pu.x2 - pu.x1) * t
+        const dy = (pu.y2 - pu.y1) * t
+        els[i].style.transform = `translate(${dx.toFixed(2)}px, ${dy.toFixed(2)}px)`
+        els[i].style.opacity = (Math.sin(t * Math.PI) * 0.95).toFixed(2)
       }
     }
     const onScroll = () => { if (!raf) raf = requestAnimationFrame(update) }
@@ -79,57 +142,43 @@ function EngineDiagram() {
     window.addEventListener('scroll', onScroll, { passive: true })
     window.addEventListener('resize', onScroll)
     return () => {
-      io.disconnect()
       window.removeEventListener('scroll', onScroll)
       window.removeEventListener('resize', onScroll)
       if (raf) cancelAnimationFrame(raf)
     }
   }, [])
 
+  const labelY = 262
   return (
-    <svg ref={svgRef} className="engine" viewBox="0 0 720 280" role="img"
-      aria-label="Open-text responses enter the Qualai pipeline, route through its stages, and exit as one structured insight.">
-      {/* the black box */}
-      <rect className="eng-box" x="175" y="48" width="370" height="184" rx="14" />
-
-      {/* pipes routing through the box, in different directions */}
-      {ENG_PATHS.map((d, i) => (
-        <g key={i}>
-          <path className="eng-pipe" d={d} />
-          <path className="eng-pipe-hi" d={d} />
-        </g>
+    <svg ref={svgRef} className="engine" viewBox={`0 0 ${NN_VB_W} ${NN_VB_H}`} role="img"
+      aria-label="The four-stage pipeline as a neural network: open text passes through type detection, qualitative coding, thematic categorization, and executive synthesis to become structured signal.">
+      {NN_GEO.edges.map((e, i) => (
+        <line key={i} className="nn-edge" x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2}
+          strokeOpacity={e.opacity} strokeWidth={e.width} />
       ))}
 
-      {/* data packets — position driven by scroll (see effect above) */}
-      {ENG_PATHS.map((d, pi) =>
-        [0, 1, 2].map(k => (
-          <circle key={`${pi}-${k}`} className="eng-dot eng-flow" r="3.2"
-            data-phase={(k / 3 + pi * 0.11).toFixed(3)}
-            style={{ offsetPath: `path('${d}')` }} />
+      {/* pulses start at their edge's source node and move via transform only */}
+      {NN_GEO.pulses.map((pu, i) => (
+        <circle key={i} className="nn-pulse" cx={pu.x1} cy={pu.y1} r={2.6} />
+      ))}
+
+      {NN_GEO.nodes.map((col, li) =>
+        col.map((n, j) => (
+          <circle key={`${li}-${j}`} className={`nn-node nn-node-${NN_LAYERS[li].kind}`} cx={n.x} cy={n.y} r={7} />
         ))
       )}
 
-      {/* interior label — revealed once the box opens */}
-      <text className="eng-label eng-label-g" x="360" y="70" textAnchor="middle">PIPELINE</text>
-
-      {/* input: scattered open text */}
-      <circle className="eng-in" cx="58" cy="126" r="2.2" />
-      <circle className="eng-in" cx="46" cy="140" r="2.2" />
-      <circle className="eng-in" cx="58" cy="154" r="2.2" />
-      <text className="eng-label" x="98" y="116" textAnchor="end">OPEN TEXT</text>
-
-      {/* output: one structured signal */}
-      <g>
-        <circle className="eng-out" cx="655" cy="124" r="3" />
-        <circle className="eng-out" cx="641" cy="140" r="3" />
-        <circle className="eng-out" cx="669" cy="140" r="3" />
-        <circle className="eng-out" cx="655" cy="156" r="3" />
-      </g>
-      <text className="eng-label eng-label-g" x="655" y="182" textAnchor="middle">STRUCTURED</text>
-
-      {/* box doors — slide apart on load to reveal the pipeline */}
-      <rect className="eng-door eng-door-l" x="175" y="48" width="190" height="184" rx="14" />
-      <rect className="eng-door eng-door-r" x="355" y="48" width="190" height="184" rx="14" />
+      {NN_LAYERS.map((L, li) => (
+        <text
+          key={li}
+          className={`nn-label nn-label-${L.kind}`}
+          x={NN_GEO.nodes[li][0].x}
+          y={labelY}
+          textAnchor="middle"
+        >
+          {L.label}
+        </text>
+      ))}
     </svg>
   )
 }
@@ -362,29 +411,26 @@ export default function Home() {
         }
         .hero .cta-btn { margin-top: 32px; }
 
-        /* Input → black box → output engine diagram */
+        /* Neural-network pipeline diagram */
         .engine {
           width: 100%;
-          max-width: 860px;
+          max-width: 900px;
           height: auto;
           display: block;
           margin: 72px auto 0;
           animation: fadeUp 0.8s 0.2s ease both;
         }
-        .eng-box { fill: rgba(8,12,9,0.9); stroke: var(--green-dim); stroke-width: 1.2; }
-        .eng-pipe { fill: none; stroke: var(--green-dim); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
-        .eng-pipe-hi { fill: none; stroke: var(--green); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; opacity: 0.4; }
-        .eng-dot { fill: #e4ffdb; filter: drop-shadow(0 0 4px var(--green)); }
-        .eng-out { fill: var(--green); filter: drop-shadow(0 0 5px var(--green)); }
-        .eng-in { fill: var(--muted); }
-        .eng-label { font-family: var(--font-mono), monospace; font-size: 11px; letter-spacing: 0.12em; fill: var(--muted); }
-        .eng-label-g { fill: var(--green); }
-        .eng-door { fill: rgba(10,14,10,0.98); stroke: var(--green-dim); stroke-width: 1; }
-        .eng-flow { offset-rotate: 0deg; }
-        .engine.open .eng-door-l { animation: engDoorL 0.9s ease both; }
-        .engine.open .eng-door-r { animation: engDoorR 0.9s ease both; }
-        @keyframes engDoorL { to { transform: translateX(-26px); opacity: 0; } }
-        @keyframes engDoorR { to { transform: translateX(26px); opacity: 0; } }
+        .nn-edge { stroke: var(--green); fill: none; stroke-linecap: round; }
+        .nn-node { stroke-width: 1.5; }
+        .nn-node-input { fill: transparent; stroke: var(--muted); opacity: 0.45; }
+        .nn-node-mid { fill: color-mix(in srgb, var(--green) 8%, transparent); stroke: var(--green); opacity: 0.9; }
+        .nn-node-output { fill: var(--green); stroke: var(--green); filter: drop-shadow(0 0 5px color-mix(in srgb, var(--green) 60%, transparent)); }
+        .nn-pulse { fill: #eafff0; opacity: 0; filter: drop-shadow(0 0 3px var(--green)); will-change: transform, opacity; }
+        .nn-label { font-family: var(--font-mono), monospace; font-size: 11px; letter-spacing: 0.14em; }
+        .nn-label-input { fill: var(--muted); opacity: 0.7; }
+        .nn-label-mid { fill: var(--muted); }
+        .nn-label-output { fill: var(--green); }
+        @media (prefers-reduced-motion: reduce) { .nn-pulse { display: none; } }
 
         /* Value-proposition map (own section below the hero) */
         /* Why Qualai — value-prop diagram annotated with the argument */
@@ -564,7 +610,6 @@ export default function Home() {
 
         @media (prefers-reduced-motion: reduce) {
           .vp-rect-final { animation: none; }
-          .engine.open .eng-door-l, .engine.open .eng-door-r { animation: none; opacity: 0; }
         }
 
         @media (max-width: 600px) {
